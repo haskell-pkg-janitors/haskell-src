@@ -353,11 +353,20 @@ data HsLiteral
 #endif
 
 -- | Haskell expressions.
--- Because it is difficult for parsers to distinguish patterns from
--- expressions, they typically parse them in the same way and then check
--- that they have the appropriate form.  Hence the expression type
--- includes some forms that are found only in patterns.  After these
--- checks, these constructors should not be used.
+--
+-- /Notes:/
+--
+-- * Because it is difficult for parsers to distinguish patterns from
+--   expressions, they typically parse them in the same way and then check
+--   that they have the appropriate form.  Hence the expression type
+--   includes some forms that are found only in patterns.  After these
+--   checks, these constructors should not be used.
+--
+-- * The parser does not take precedence and associativity into account,
+--   so it will leave 'HsInfixApp's associated to the left.
+--
+-- * The 'Language.Haskell.Pretty.Pretty' instance for 'Expr' does not
+--   add parentheses in printing.
 
 data HsExp
 	= HsVar HsQName			-- ^ variable
