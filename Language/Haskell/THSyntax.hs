@@ -72,160 +72,163 @@ class Lift t where
   lift :: t -> ExpQ
   
 instance Lift Integer where
-  lift = litExp . IntegerLit
+  lift = litE . IntegerL
 
 instance Lift Int where
-  lift = litExp . IntegerLit . fromIntegral
+  lift = litE . IntegerL . fromIntegral
 
 instance Lift Char where
-  lift = litExp . CharLit
+  lift = litE . CharL
 
 instance Lift a => Lift [a] where
-  lift xs = listExp (map lift xs)
+  lift xs = listE (map lift xs)
 
 -- TH has a special form for literal strings,
 -- which we should take advantage of
-{-# RULES "TH:liftString" forall s. lift s = litExp (StringLit s) #-}
+{-# RULES "TH:liftString" forall s. lift s = litE (StringL s) #-}
 
 
 
 ------------------------------------------------------
 
-data Lit = CharLit Char 
-	 | StringLit String 
-	 | IntegerLit Integer 	  -- Used for overloaded and non-overloaded
-                              -- literals. We don't have a good way to
-                              -- represent non-overloaded literals at
-                              -- the moment. Maybe that doesn't matter?
-     | IntPrimLit Integer
-     | FloatPrimLit Rational
-     | DoublePrimLit Rational
-	 | RationalLit Rational   -- Ditto
-	 deriving( Show )
+data Lit = CharL Char 
+         | StringL String 
+         | IntegerL Integer     -- Used for overloaded and non-overloaded
+                                -- literals. We don't have a good way to
+                                -- represent non-overloaded literals at
+                                -- the moment. Maybe that doesn't matter?
+         | RationalL Rational   -- Ditto
+         | IntPrimL Integer
+         | FloatPrimL Rational
+         | DoublePrimL Rational
+    deriving( Show )
 
-	-- We could add Int, Float, Double etc, as we do in HsLit, 
-	-- but that could complicate the
-	-- suppposedly-simple THSyntax literal type
+    -- We could add Int, Float, Double etc, as we do in HsLit, 
+    -- but that could complicate the
+    -- suppposedly-simple THSyntax literal type
 
 data Pat 
-  = LitPat Lit                      -- { 5 or 'c' }
-  | VarPat String                   -- { x }
-  | TupPat [Pat]                    -- { (p1,p2) }
-  | ConPat String [Pat]             -- data T1 = C1 t1 t2; {C1 p1 p1} = e 
-  | TildePat Pat                    -- { ~p }
-  | AsPat String Pat                -- { x @ p }
-  | WildPat                         -- { _ }
-  | RecPat String [FieldPat]        -- f (Pt { pointx = x }) = g x
+  = LitP Lit                      -- { 5 or 'c' }
+  | VarP String                   -- { x }
+  | TupP [Pat]                    -- { (p1,p2) }
+  | ConP String [Pat]             -- data T1 = C1 t1 t2; {C1 p1 p1} = e 
+  | TildeP Pat                    -- { ~p }
+  | AsP String Pat                -- { x @ p }
+  | WildP                         -- { _ }
+  | RecP String [FieldPat]        -- f (Pt { pointx = x }) = g x
   deriving( Show )
 
 type FieldPat = (String,Pat)
 
-data Match = Match Pat RHS [Dec]
+data Match = Match Pat Body [Dec]
                                     -- case e of { pat -> body where decs } 
     deriving Show
-data Clause = Clause [Pat] RHS [Dec]
+data Clause = Clause [Pat] Body [Dec]
                                     -- f { p1 p2 = body where decs }
     deriving Show
  
 data Exp 
-  = VarExp String                           -- { x }
-  | ConExp String                           -- data T1 = C1 t1 t2; p = {C1} e1 e2  
-  | LitExp Lit                              -- { 5 or 'c'}
-  | AppExp Exp Exp                          -- { f x }
+  = VarE String                        -- { x }
+  | ConE String                        -- data T1 = C1 t1 t2; p = {C1} e1 e2  
+  | LitE Lit                           -- { 5 or 'c'}
+  | AppE Exp Exp                       -- { f x }
 
-  | InfixExp (Maybe Exp) Exp (Maybe Exp)    -- {x + y} or {(x+)} or {(+ x)} or {(+)}
-	-- It's a bit gruesome to use an Exp as the
-	-- operator, but how else can we distinguish
-	-- constructors from non-constructors?
-	-- Maybe there should be a var-or-con type?
-	-- Or maybe we should leave it to the String itself?
+  | InfixE (Maybe Exp) Exp (Maybe Exp) -- {x + y} or {(x+)} or {(+ x)} or {(+)}
+    -- It's a bit gruesome to use an Exp as the
+    -- operator, but how else can we distinguish
+    -- constructors from non-constructors?
+    -- Maybe there should be a var-or-con type?
+    -- Or maybe we should leave it to the String itself?
 
-  | LamExp [Pat] Exp                        -- { \ p1 p2 -> e }
-  | TupExp [Exp]                            -- { (e1,e2) }  
-  | CondExp Exp Exp Exp                     -- { if e1 then e2 else e3 }
-  | LetExp [Dec] Exp                        -- { let x=e1;   y=e2 in e3 }
-  | CaseExp Exp [Match]                     -- { case e of m1; m2 }
-  | DoExp [Stmt]                       -- { do { p <- e1; e2 }  }
-  | CompExp [Stmt]                     -- { [ (x,y) | x <- xs, y <- ys ] }
-  | ArithSeqExp DotDot                      -- { [ 1 ,2 .. 10 ] }
-  | ListExp [ Exp ]                         -- { [1,2,3] }
-  | SigExp Exp Typ                          -- e :: t
-  | RecConExp String [FieldExp]             -- { T { x = y, z = w } }
-  | RecUpdExp Exp [FieldExp]                -- { (f x) { z = w } }
+  | LamE [Pat] Exp                     -- { \ p1 p2 -> e }
+  | TupE [Exp]                         -- { (e1,e2) }  
+  | CondE Exp Exp Exp                  -- { if e1 then e2 else e3 }
+  | LetE [Dec] Exp                     -- { let x=e1;   y=e2 in e3 }
+  | CaseE Exp [Match]                  -- { case e of m1; m2 }
+  | DoE [Stmt]                         -- { do { p <- e1; e2 }  }
+  | CompE [Stmt]                       -- { [ (x,y) | x <- xs, y <- ys ] }
+  | ArithSeqE Range                    -- { [ 1 ,2 .. 10 ] }
+  | ListE [ Exp ]                      -- { [1,2,3] }
+  | SigE Exp Type                      -- e :: t
+  | RecConE String [FieldExp]          -- { T { x = y, z = w } }
+  | RecUpdE Exp [FieldExp]             -- { (f x) { z = w } }
   deriving( Show )
 
 type FieldExp = (String,Exp)
 
 -- Omitted: implicit parameters
 
-data RHS
-  = GuardedRHS [(Exp,Exp)]     -- f p { | e1 = e2 | e3 = e4 } where ds
-  | NormalRHS Exp              -- f p { = e } where ds
+data Body
+  = GuardedB [(Exp,Exp)]     -- f p { | e1 = e2 | e3 = e4 } where ds
+  | NormalB Exp              -- f p { = e } where ds
   deriving( Show )
 
 data Stmt
-  = BindStmt Pat Exp
-  | LetStmt [ Dec ]
-  | NoBindStmt Exp
-  | ParStmt [[Stmt]]
+  = BindS Pat Exp
+  | LetS [ Dec ]
+  | NoBindS Exp
+  | ParS [[Stmt]]
   deriving( Show )
 
-data DotDot = FromDotDot Exp | FromThenDotDot Exp Exp
-            | FromToDotDot Exp Exp | FromThenToDotDot Exp Exp Exp
-	      deriving( Show )
+data Range = FromR Exp | FromThenR Exp Exp
+           | FromToR Exp Exp | FromThenToR Exp Exp Exp
+          deriving( Show )
   
 data Dec 
-  = FunDec String [Clause]                 -- { f p1 p2 = b where decs }
-  | ValDec Pat RHS [Dec]         -- { p = b where decs }
-  | DataDec Cxt String [String] 
-         [Con] [String]                 -- { data Cxt x => T x = A x | B (T x) deriving (Z,W)}
-  | NewtypeDec Cxt String [String] 
-         Con [String]                   -- { newtype Cxt x => T x = A (B x) deriving (Z,W)}
-  | TySynDec String [String] Typ           -- { type T x = (x,x) }
-  | ClassDec Cxt String [String] [Dec]     -- { class Eq a => Ord a where ds }
-  | InstanceDec Cxt Typ [Dec]              -- { instance Show w => Show [w] where ds }
-  | SigDec String Typ                      -- { length :: [a] -> Int }
-  | ForeignDec Foreign
+  = FunD String [Clause]              -- { f p1 p2 = b where decs }
+  | ValD Pat Body [Dec]               -- { p = b where decs }
+  | DataD Cxt String [String] 
+         [Con] [String]               -- { data Cxt x => T x = A x | B (T x)
+                                      --       deriving (Z,W)}
+  | NewtypeD Cxt String [String] 
+         Con [String]                 -- { newtype Cxt x => T x = A (B x)
+                                      --       deriving (Z,W)}
+  | TySynD String [String] Type       -- { type T x = (x,x) }
+  | ClassD Cxt String [String] [Dec]  -- { class Eq a => Ord a where ds }
+  | InstanceD Cxt Type [Dec]          -- { instance Show w => Show [w]
+                                      --       where ds }
+  | SigD String Type                  -- { length :: [a] -> Int }
+  | ForeignD Foreign
   deriving( Show )
 
-data Foreign = ImportForeign Callconv Safety String String Typ
-             -- ExportForeign missing...
-	     deriving( Show )
+data Foreign = ImportF Callconv Safety String String Type
+             -- ExportF missing...
+         deriving( Show )
 
 data Callconv = CCall | StdCall
-	      deriving( Show )
+          deriving( Show )
 
 data Safety = Unsafe | Safe | Threadsafe
-	    deriving( Show )
+        deriving( Show )
 
-type Cxt = [Typ]	-- (Eq a, Ord b)
+type Cxt = [Type]    -- (Eq a, Ord b)
 
 data Strict = IsStrict | NotStrict
          deriving( Show )
 
-data Con = NormalCon String [StrictTyp]
-         | RecCon String [VarStrictTyp]
-         | InfixCon StrictTyp String StrictTyp
+data Con = NormalC String [StrictType]
+         | RecC String [VarStrictType]
+         | InfixC StrictType String StrictType
          deriving( Show )
 
-type StrictTyp = (Strict, Typ)
-type StrictTypQ = Q StrictTyp
-type VarStrictTyp = (String, Strict, Typ)
-type VarStrictTypQ = Q VarStrictTyp
+type StrictType = (Strict, Type)
+type StrictTypeQ = Q StrictType
+type VarStrictType = (String, Strict, Type)
+type VarStrictTypeQ = Q VarStrictType
 
-data Program = Program [ Dec ] 
+data Module = Module [ Dec ] 
              deriving( Show )
 
 -- FIXME: Why this special status for "List" (even tuples might be handled
---	  differently)? -=chak
-data Tag = TupleTag Int | ArrowTag | ListTag | ConNameTag String
-         deriving (Eq, Show)
-
-data Typ = ForallTyp [String] Cxt Typ  -- forall <vars>. <ctxt> -> <type>
-         | VarTyp String               -- a
-         | ConTyp Tag                  -- T or [] or (->) or (,,) etc
-         | AppTyp Typ Typ              -- T a b
- 	 deriving( Show )
+--      differently)? -=chak
+data Type = ForallT [String] Cxt Type -- forall <vars>. <ctxt> -> <type>
+          | VarT String               -- a
+          | ConT String               -- T
+          | TupleT Int                -- (,), (,,), etc.
+          | ArrowT                    -- ->
+          | ListT                     -- []
+          | AppT Type Type            -- T a b
+      deriving( Show )
  
 ---------------------------------------------------
 -- Combinator based types
@@ -233,13 +236,13 @@ data Typ = ForallTyp [String] Cxt Typ  -- forall <vars>. <ctxt> -> <type>
 type ExpQ = Q Exp
 type DecQ = Q Dec
 type ConQ = Q Con
-type TypQ = Q Typ
+type TypeQ = Q Type
 type CxtQ = Q Cxt
 type MatchQ = Q Match
 type ClauseQ = Q Clause
-type RHSQ = Q RHS
+type BodyQ = Q Body
 type StmtQ = Q Stmt
-type DotDotQ = Q DotDot
+type RangeQ = Q Range
 
 --runE :: ExpQ -> Exp
 --runE x = runQ 0 x
@@ -255,276 +258,296 @@ type DotDotQ = Q DotDot
 
 -------------------- Lowercase pattern syntax functions ---
 
-intPrimLit    :: Integer -> Lit
-intPrimLit    = IntPrimLit
-floatPrimLit  :: Rational -> Lit
-floatPrimLit  = FloatPrimLit
-doublePrimLit :: Rational -> Lit
-doublePrimLit = DoublePrimLit
-integerLit    :: Integer -> Lit
-integerLit    = IntegerLit
-charLit       :: Char -> Lit
-charLit       = CharLit
-stringLit     :: String -> Lit
-stringLit     = StringLit
-rationalLit   :: Rational -> Lit
-rationalLit   = RationalLit
+intPrimL    :: Integer -> Lit
+intPrimL    = IntPrimL
+floatPrimL  :: Rational -> Lit
+floatPrimL  = FloatPrimL
+doublePrimL :: Rational -> Lit
+doublePrimL = DoublePrimL
+integerL    :: Integer -> Lit
+integerL    = IntegerL
+charL       :: Char -> Lit
+charL       = CharL
+stringL     :: String -> Lit
+stringL     = StringL
+rationalL   :: Rational -> Lit
+rationalL   = RationalL
 
-litPat :: Lit -> Pat
-litPat = LitPat
-varPat :: String -> Pat
-varPat = VarPat
-tupPat :: [Pat] -> Pat
-tupPat = TupPat
-conPat :: String -> [Pat] -> Pat
-conPat = ConPat
-tildePat :: Pat -> Pat
-tildePat = TildePat
-asPat :: String -> Pat -> Pat
-asPat = AsPat
-wildPat :: Pat
-wildPat = WildPat
-recPat :: String -> [FieldPat] -> Pat
-recPat = RecPat
+litP :: Lit -> Pat
+litP = LitP
+varP :: String -> Pat
+varP = VarP
+tupP :: [Pat] -> Pat
+tupP = TupP
+conP :: String -> [Pat] -> Pat
+conP = ConP
+tildeP :: Pat -> Pat
+tildeP = TildeP
+asP :: String -> Pat -> Pat
+asP = AsP
+wildP :: Pat
+wildP = WildP
+recP :: String -> [FieldPat] -> Pat
+recP = RecP
 
 fieldPat :: String -> Pat -> (String, Pat)
 fieldPat = (,)
 
 
---------------------------------------------------------------------------------
--- 	Stmt
+-------------------------------------------------------------------------------
+--     Stmt
 
-bindStmt :: Pat -> ExpQ -> StmtQ
-bindStmt p e = liftM (BindStmt p) e
+bindS :: Pat -> ExpQ -> StmtQ
+bindS p e = liftM (BindS p) e
 
-letStmt :: [DecQ] -> StmtQ
-letStmt ds = do { ds1 <- sequence ds; return (LetStmt ds1) }
+letS :: [DecQ] -> StmtQ
+letS ds = do { ds1 <- sequence ds; return (LetS ds1) }
 
-noBindStmt :: ExpQ -> StmtQ
-noBindStmt e = do { e1 <- e; return (NoBindStmt e1) }
+noBindS :: ExpQ -> StmtQ
+noBindS e = do { e1 <- e; return (NoBindS e1) }
 
-parStmt :: [[StmtQ]] -> StmtQ
-parStmt _ = fail "No parallel comprehensions yet"
+parS :: [[StmtQ]] -> StmtQ
+parS _ = fail "No parallel comprehensions yet"
 
---------------------------------------------------------------------------------
--- 	RHS
+-------------------------------------------------------------------------------
+--     Range
 
-normalRHS :: ExpQ -> RHSQ
-normalRHS e = do { e1 <- e; return (NormalRHS e1) }
+fromR :: ExpQ -> RangeQ
+fromR x = do { a <- x; return (FromR a) }  
 
-guardedRHS :: [(ExpQ,ExpQ)] -> RHSQ
-guardedRHS gs = do { gs1 <- mapM f gs; return (GuardedRHS gs1) }
-	   where
-		f (g,e) = do { g1 <- g; e1 <- e; return (g1,e1) }
+fromThenR :: ExpQ -> ExpQ -> RangeQ
+fromThenR x y = do { a <- x; b <- y; return (FromThenR a b) }  
 
---------------------------------------------------------------------------------
--- 	Match and Clause
+fromToR :: ExpQ -> ExpQ -> RangeQ
+fromToR x y = do { a <- x; b <- y; return (FromToR a b) }  
 
-match :: Pat -> RHSQ -> [DecQ] -> MatchQ
+fromThenToR :: ExpQ -> ExpQ -> ExpQ -> RangeQ
+fromThenToR x y z = do { a <- x; b <- y; c <- z;
+                         return (FromThenToR a b c) }  
+-------------------------------------------------------------------------------
+--     Body
+
+normalB :: ExpQ -> BodyQ
+normalB e = do { e1 <- e; return (NormalB e1) }
+
+guardedB :: [(ExpQ,ExpQ)] -> BodyQ
+guardedB ges = do { ges' <- mapM f ges; return (GuardedB ges') }
+    where f (g, e) = do { g' <- g; e' <- e; return (g', e') }
+
+-------------------------------------------------------------------------------
+--     Match and Clause
+
+match :: Pat -> BodyQ -> [DecQ] -> MatchQ
 match p rhs ds = do { r' <- rhs;
                       ds' <- sequence ds;
                       return (Match p r' ds') }
 
-clause :: [Pat] -> RHSQ -> [DecQ] -> ClauseQ
+clause :: [Pat] -> BodyQ -> [DecQ] -> ClauseQ
 clause ps r ds = do { r' <- r;
                       ds' <- sequence ds;
                       return (Clause ps r' ds') }
 
 
 ---------------------------------------------------------------------------
--- 	Exp
+--     Exp
 
 global :: String -> ExpQ
-global s = return (VarExp s)
+global s = return (VarE s)
 
-varExp :: String -> ExpQ
-varExp s = return (VarExp s)
+varE :: String -> ExpQ
+varE s = return (VarE s)
 
-conExp :: String -> ExpQ
-conExp s =  return (ConExp s)
+conE :: String -> ExpQ
+conE s =  return (ConE s)
 
-litExp :: Lit -> ExpQ
-litExp c = return (LitExp c)
+litE :: Lit -> ExpQ
+litE c = return (LitE c)
 
-appExp :: ExpQ -> ExpQ -> ExpQ
-appExp x y = do { a <- x; b <- y; return (AppExp a b)}
+appE :: ExpQ -> ExpQ -> ExpQ
+appE x y = do { a <- x; b <- y; return (AppE a b)}
 
-infixExp :: Maybe ExpQ -> ExpQ -> Maybe ExpQ -> ExpQ
-infixExp (Just x) s (Just y) = do { a <- x; s' <- s; b <- y; return (InfixExp (Just a) s' (Just b))}
-infixExp Nothing  s (Just y) = do { s' <- s; b <- y; return (InfixExp Nothing s' (Just b))}
-infixExp (Just x) s Nothing  = do { a <- x; s' <- s; return (InfixExp (Just a) s' Nothing)}
-infixExp Nothing  s Nothing  = do { s' <- s; return (InfixExp Nothing s' Nothing) }
+infixE :: Maybe ExpQ -> ExpQ -> Maybe ExpQ -> ExpQ
+infixE (Just x) s (Just y) = do { a <- x; s' <- s; b <- y;
+                                  return (InfixE (Just a) s' (Just b))}
+infixE Nothing  s (Just y) = do { s' <- s; b <- y;
+                                  return (InfixE Nothing s' (Just b))}
+infixE (Just x) s Nothing  = do { a <- x; s' <- s;
+                                  return (InfixE (Just a) s' Nothing)}
+infixE Nothing  s Nothing  = do { s' <- s; return (InfixE Nothing s' Nothing) }
 
 infixApp :: ExpQ -> ExpQ -> ExpQ -> ExpQ
-infixApp x y z = infixExp (Just x) y (Just z)
+infixApp x y z = infixE (Just x) y (Just z)
 sectionL :: ExpQ -> ExpQ -> ExpQ
-sectionL x y = infixExp (Just x) y Nothing
+sectionL x y = infixE (Just x) y Nothing
 sectionR :: ExpQ -> ExpQ -> ExpQ
-sectionR x y = infixExp Nothing x (Just y)
+sectionR x y = infixE Nothing x (Just y)
 
-fromExp :: ExpQ -> ExpQ
-fromExp x = do { a <- x; return (ArithSeqExp (FromDotDot a)) }  
+lamE :: [Pat] -> ExpQ -> ExpQ
+lamE ps e = liftM (LamE ps) e
 
-fromThenExp :: ExpQ -> ExpQ -> ExpQ
-fromThenExp x y = do { a <- x; b <- y; return (ArithSeqExp (FromThenDotDot a b)) }  
+lam1E :: Pat -> ExpQ -> ExpQ    -- Single-arg lambda
+lam1E p e = lamE [p] e
 
-fromToExp :: ExpQ -> ExpQ -> ExpQ
-fromToExp x y = do { a <- x; b <- y; return (ArithSeqExp (FromToDotDot a b)) }  
+tupE :: [ExpQ] -> ExpQ
+tupE es = do { es1 <- sequence es; return (TupE es1)}
 
-fromThenToExp :: ExpQ -> ExpQ -> ExpQ -> ExpQ
-fromThenToExp x y z = do { a <- x; b <- y; c <- z; return (ArithSeqExp (FromThenToDotDot a b c)) }  
+condE :: ExpQ -> ExpQ -> ExpQ -> ExpQ
+condE x y z =  do { a <- x; b <- y; c <- z; return (CondE a b c)}
 
-lamExp :: [Pat] -> ExpQ -> ExpQ
-lamExp ps e = liftM (LamExp ps) e
+letE :: [DecQ] -> ExpQ -> ExpQ
+letE ds e = do { ds2 <- sequence ds; e2 <- e; return (LetE ds2 e2) }
 
-lam1Exp :: Pat -> ExpQ -> ExpQ	-- Single-arg lambda
-lam1Exp p e = lamExp [p] e
+caseE :: ExpQ -> [MatchQ] -> ExpQ
+caseE e ms = do { e1 <- e; ms1 <- sequence ms; return (CaseE e1 ms1) } 
 
-tupExp :: [ExpQ] -> ExpQ
-tupExp es = do { es1 <- sequence es; return (TupExp es1)}
+doE :: [StmtQ] -> ExpQ
+doE ss = do { ss1 <- sequence ss; return (DoE ss1) } 
 
-condExp :: ExpQ -> ExpQ -> ExpQ -> ExpQ
-condExp x y z =  do { a <- x; b <- y; c <- z; return (CondExp a b c)}
+compE :: [StmtQ] -> ExpQ
+compE ss = do { ss1 <- sequence ss; return (CompE ss1) } 
 
-letExp :: [DecQ] -> ExpQ -> ExpQ
-letExp ds e = do { ds2 <- sequence ds; e2 <- e; return (LetExp ds2 e2) }
+arithSeqE :: RangeQ -> ExpQ
+arithSeqE r = do { r' <- r; return (ArithSeqE r') }  
 
-caseExp :: ExpQ -> [MatchQ] -> ExpQ
-caseExp e ms = do { e1 <- e; ms1 <- sequence ms; return (CaseExp e1 ms1) } 
+-- arithSeqE Shortcuts
+fromE :: ExpQ -> ExpQ
+fromE x = do { a <- x; return (ArithSeqE (FromR a)) }  
 
-doExp :: [StmtQ] -> ExpQ
-doExp ss = do { ss1 <- sequence ss; return (DoExp ss1) } 
+fromThenE :: ExpQ -> ExpQ -> ExpQ
+fromThenE x y = do { a <- x; b <- y; return (ArithSeqE (FromThenR a b)) }  
 
-compExp :: [StmtQ] -> ExpQ
-compExp ss = do { ss1 <- sequence ss; return (CompExp ss1) } 
+fromToE :: ExpQ -> ExpQ -> ExpQ
+fromToE x y = do { a <- x; b <- y; return (ArithSeqE (FromToR a b)) }  
 
-listExp :: [ExpQ] -> ExpQ
-listExp es = do { es1 <- sequence es; return (ListExp es1) }
+fromThenToE :: ExpQ -> ExpQ -> ExpQ -> ExpQ
+fromThenToE x y z = do { a <- x; b <- y; c <- z;
+                         return (ArithSeqE (FromThenToR a b c)) }  
+-- End arithSeqE shortcuts
 
-sigExp :: ExpQ -> TypQ -> ExpQ
-sigExp e t = do { e1 <- e; t1 <- t; return (SigExp e1 t1) }
+listE :: [ExpQ] -> ExpQ
+listE es = do { es1 <- sequence es; return (ListE es1) }
 
-recConExp :: String -> [Q (String,Exp)] -> ExpQ
-recConExp c fs = do { flds <- sequence fs; return (RecConExp c flds) }
+sigE :: ExpQ -> TypeQ -> ExpQ
+sigE e t = do { e1 <- e; t1 <- t; return (SigE e1 t1) }
 
-recUpdExp :: ExpQ -> [Q (String,Exp)] -> ExpQ
-recUpdExp e fs = do { e1 <- e; flds <- sequence fs; return (RecUpdExp e1 flds) }
+recConE :: String -> [Q (String,Exp)] -> ExpQ
+recConE c fs = do { flds <- sequence fs; return (RecConE c flds) }
 
-stringExp :: String -> ExpQ
-stringExp = litExp . stringLit
+recUpdE :: ExpQ -> [Q (String,Exp)] -> ExpQ
+recUpdE e fs = do { e1 <- e; flds <- sequence fs; return (RecUpdE e1 flds) }
+
+stringE :: String -> ExpQ
+stringE = litE . stringL
 
 fieldExp :: String -> ExpQ -> Q (String, Exp)
 fieldExp s e = do { e' <- e; return (s,e') }
 
---------------------------------------------------------------------------------
--- 	Dec
+-------------------------------------------------------------------------------
+--     Dec
 
-valDec :: Pat -> RHSQ -> [DecQ] -> DecQ
-valDec p b ds = 
+valD :: Pat -> BodyQ -> [DecQ] -> DecQ
+valD p b ds = 
   do { ds' <- sequence ds
      ; b' <- b
-     ; return (ValDec p b' ds')
+     ; return (ValD p b' ds')
      }
 
-funDec :: String -> [ClauseQ] -> DecQ
-funDec nm cs = 
+funD :: String -> [ClauseQ] -> DecQ
+funD nm cs = 
  do { cs1 <- sequence cs
-    ; return (FunDec nm cs1)
+    ; return (FunD nm cs1)
     }
 
-tySynDec :: String -> [String] -> TypQ -> DecQ
-tySynDec tc tvs rhs = do { rhs1 <- rhs; return (TySynDec tc tvs rhs1) }
+tySynD :: String -> [String] -> TypeQ -> DecQ
+tySynD tc tvs rhs = do { rhs1 <- rhs; return (TySynD tc tvs rhs1) }
 
-dataDec :: CxtQ -> String -> [String] -> [ConQ] -> [String] -> DecQ
-dataDec ctxt tc tvs cons derivs =
+dataD :: CxtQ -> String -> [String] -> [ConQ] -> [String] -> DecQ
+dataD ctxt tc tvs cons derivs =
   do
     ctxt1 <- ctxt
     cons1 <- sequence cons
-    return (DataDec ctxt1 tc tvs cons1 derivs)
+    return (DataD ctxt1 tc tvs cons1 derivs)
 
-newtypeDec :: CxtQ -> String -> [String] -> ConQ -> [String] -> DecQ
-newtypeDec ctxt tc tvs con derivs =
+newtypeD :: CxtQ -> String -> [String] -> ConQ -> [String] -> DecQ
+newtypeD ctxt tc tvs con derivs =
   do
     ctxt1 <- ctxt
     con1 <- con
-    return (NewtypeDec ctxt1 tc tvs con1 derivs)
+    return (NewtypeD ctxt1 tc tvs con1 derivs)
 
-classDec :: CxtQ -> String -> [String] -> [DecQ] -> DecQ
-classDec ctxt cls tvs decs =
+classD :: CxtQ -> String -> [String] -> [DecQ] -> DecQ
+classD ctxt cls tvs decs =
   do 
     decs1 <- sequence decs
     ctxt1 <- ctxt
-    return $ ClassDec ctxt1 cls tvs decs1
+    return $ ClassD ctxt1 cls tvs decs1
 
-instanceDec :: CxtQ -> TypQ -> [DecQ] -> DecQ
-instanceDec ctxt ty decs =
+instanceD :: CxtQ -> TypeQ -> [DecQ] -> DecQ
+instanceD ctxt ty decs =
   do 
     ctxt1 <- ctxt
     decs1 <- sequence decs
     ty1   <- ty
-    return $ InstanceDec ctxt1 ty1 decs1
+    return $ InstanceD ctxt1 ty1 decs1
 
-sigDec :: String -> TypQ -> DecQ
-sigDec fun ty = liftM (SigDec fun) $ ty
+sigD :: String -> TypeQ -> DecQ
+sigD fun ty = liftM (SigD fun) $ ty
 
-cxt :: [TypQ] -> CxtQ
+cxt :: [TypeQ] -> CxtQ
 cxt = sequence
 
-normalCon :: String -> [StrictTypQ] -> ConQ
-normalCon con strtys = liftM (NormalCon con) $ sequence strtys
+normalC :: String -> [StrictTypeQ] -> ConQ
+normalC con strtys = liftM (NormalC con) $ sequence strtys
 
-recCon :: String -> [VarStrictTypQ] -> ConQ
-recCon con varstrtys = liftM (RecCon con) $ sequence varstrtys
+recC :: String -> [VarStrictTypeQ] -> ConQ
+recC con varstrtys = liftM (RecC con) $ sequence varstrtys
 
-infixCon :: Q (Strict, Typ) -> String -> Q (Strict, Typ) -> ConQ
-infixCon st1 con st2 = do st1' <- st1
-                          st2' <- st2
-                          return $ InfixCon st1' con st2'
+infixC :: Q (Strict, Type) -> String -> Q (Strict, Type) -> ConQ
+infixC st1 con st2 = do st1' <- st1
+                        st2' <- st2
+                        return $ InfixC st1' con st2'
 
 
---------------------------------------------------------------------------------
--- 	Typ
+-------------------------------------------------------------------------------
+--     Type
 
-forallTyp :: [String] -> CxtQ -> TypQ -> TypQ
-forallTyp tvars ctxt ty = do
+forallT :: [String] -> CxtQ -> TypeQ -> TypeQ
+forallT tvars ctxt ty = do
     ctxt1 <- ctxt
     ty1   <- ty
-    return $ ForallTyp tvars ctxt1 ty1
+    return $ ForallT tvars ctxt1 ty1
 
-varTyp :: String -> TypQ
-varTyp = return . VarTyp
+varT :: String -> TypeQ
+varT = return . VarT
 
-conTyp :: Tag -> TypQ
-conTyp = return . ConTyp
+conT :: String -> TypeQ
+conT = return . ConT
 
-appTyp :: TypQ -> TypQ -> TypQ
-appTyp t1 t2 = do
-	       t1' <- t1
-	       t2' <- t2
-	       return $ AppTyp t1' t2'
+appT :: TypeQ -> TypeQ -> TypeQ
+appT t1 t2 = do
+           t1' <- t1
+           t2' <- t2
+           return $ AppT t1' t2'
 
-arrowTyp :: TypQ
-arrowTyp = return $ ConTyp ArrowTag
+arrowT :: TypeQ
+arrowT = return ArrowT
 
-listTyp :: TypQ
-listTyp = return $ ConTyp ListTag
+listT :: TypeQ
+listT = return ListT
 
-tupleTyp :: Int -> TypQ
-tupleTyp i = return $ ConTyp (TupleTag i)
-
-conNameTyp :: String -> TypQ
-conNameTyp s = return $ ConTyp (ConNameTag s)
+tupleT :: Int -> TypeQ
+tupleT i = return (TupleT i)
 
 isStrict, notStrict :: Q Strict
 isStrict = return $ IsStrict
 notStrict = return $ NotStrict
 
-strictTyp :: Q Strict -> TypQ -> StrictTypQ
-strictTyp = liftM2 (,)
+strictType :: Q Strict -> TypeQ -> StrictTypeQ
+strictType = liftM2 (,)
 
-varStrictTyp :: String -> StrictTypQ -> VarStrictTypQ
-varStrictTyp v st = do (s, t) <- st
-                       return (v, s, t)
+varStrictType :: String -> StrictTypeQ -> VarStrictTypeQ
+varStrictType v st = do (s, t) <- st
+                        return (v, s, t)
 
 --------------------------------------------------------------
 -- useful helper functions
@@ -534,18 +557,18 @@ combine pairs = foldr f ([],[]) pairs
   where f (env,p) (es,ps) = (env++es,p:ps)
 
 rename :: Pat -> Q ([(String, String)], Pat)
-rename (LitPat c)  = return([],LitPat c)
-rename (VarPat s)  = do { s1 <- gensym s; return([(s,s1)],VarPat s1) }
-rename (TupPat pats) = do { pairs <- mapM rename pats; g(combine pairs) }
-   where g (es,ps) = return (es,TupPat ps)
-rename (ConPat nm pats) = do { pairs <- mapM rename pats; g(combine pairs) }
-   where g (es,ps) = return (es,ConPat nm ps)
-rename (TildePat p) = do { (env,p2) <- rename p; return(env,TildePat p2) }   
-rename (AsPat s p) = 
-   do { s1 <- gensym s; (env,p2) <- rename p; return((s,s1):env,AsPat s1 p2) }
-rename WildPat = return([],WildPat)
-rename (RecPat nm fs) = do { pairs <- mapM rename ps; g(combine pairs) }
-    where g (env,ps') = return (env,RecPat nm (zip ss ps'))
+rename (LitP c)  = return([],LitP c)
+rename (VarP s)  = do { s1 <- gensym s; return([(s,s1)],VarP s1) }
+rename (TupP pats) = do { pairs <- mapM rename pats; g(combine pairs) }
+   where g (es,ps) = return (es,TupP ps)
+rename (ConP nm pats) = do { pairs <- mapM rename pats; g(combine pairs) }
+   where g (es,ps) = return (es,ConP nm ps)
+rename (TildeP p) = do { (env,p2) <- rename p; return(env,TildeP p2) }   
+rename (AsP s p) = 
+   do { s1 <- gensym s; (env,p2) <- rename p; return((s,s1):env,AsP s1 p2) }
+rename WildP = return([],WildP)
+rename (RecP nm fs) = do { pairs <- mapM rename ps; g(combine pairs) }
+    where g (env,ps') = return (env,RecP nm (zip ss ps'))
           (ss,ps) = unzip fs
 
 genpat :: Pat -> Q ((String -> ExpQ), Pat)
@@ -553,26 +576,26 @@ genpat p = do { (env,p2) <- rename p; return (alpha env,p2) }
 
 alpha :: [(String, String)] -> String -> ExpQ
 alpha env s = case lookup s env of
-               Just x -> varExp x
-               Nothing -> varExp s
+               Just x -> varE x
+               Nothing -> varE s
 
 --genPE s n = [ (pvar x, var x) | i <- [1..n], let x = s ++ show i ]
 
 genPE :: String -> Integer -> ([Pat], [ExpQ])
 genPE s n = let ns = [ s++(show i) | i <- [1..n]]
-            in (map varPat ns, map varExp ns)
+            in (map varP ns, map varE ns)
 
-appsExp :: [ExpQ] -> ExpQ
-appsExp [] = error "appsExp []"
-appsExp [x] = x
-appsExp (x:y:zs) = appsExp ( (appExp x y) : zs )
+appsE :: [ExpQ] -> ExpQ
+appsE [] = error "appsExp []"
+appsE [x] = x
+appsE (x:y:zs) = appsE ( (appE x y) : zs )
 
 simpleMatch :: Pat -> Exp -> Match
-simpleMatch p e = Match p (NormalRHS e) []
+simpleMatch p e = Match p (NormalB e) []
 
 
 --------------------------------------------------------------
--- 		A pretty printer (due to Ian Lynagh)
+--         A pretty printer (due to Ian Lynagh)
 --------------------------------------------------------------
 
 nestDepth :: Int
@@ -580,9 +603,9 @@ nestDepth = 4
 
 type Precedence = Int
 appPrec, opPrec, noPrec :: Precedence
-appPrec = 2	-- Argument of a function application
-opPrec  = 1	-- Argument of an infix operator
-noPrec  = 0	-- Others
+appPrec = 2    -- Argument of a function application
+opPrec  = 1    -- Argument of an infix operator
+noPrec  = 0    -- Others
 
 parensIf :: Bool -> Doc -> Doc
 parensIf True d = parens d
@@ -593,50 +616,50 @@ pprExp :: Exp -> Doc
 pprExp = pprExpI noPrec
 
 pprExpI :: Precedence -> Exp -> Doc
-pprExpI _ (VarExp v)     = text v
-pprExpI _ (ConExp c)     = text c
-pprExpI i (LitExp l)     = pprLit i l
-pprExpI i (AppExp e1 e2) = parensIf (i >= appPrec) $ pprExpI opPrec e1
-                                                 <+> pprExpI appPrec e2
-pprExpI i (InfixExp (Just e1) op (Just e2))
+pprExpI _ (VarE v)     = text v
+pprExpI _ (ConE c)     = text c
+pprExpI i (LitE l)     = pprLit i l
+pprExpI i (AppE e1 e2) = parensIf (i >= appPrec) $ pprExpI opPrec e1
+                                               <+> pprExpI appPrec e2
+pprExpI i (InfixE (Just e1) op (Just e2))
  = parensIf (i >= opPrec) $ pprExpI opPrec e1
-                          <+> pprExp op
-                          <+> pprExpI opPrec e2
-pprExpI _ (InfixExp me1 op me2) = parens $ pprMaybeExp noPrec me1
-                                       <+> pprExp op
-                                       <+> pprMaybeExp noPrec me2
-pprExpI i (LamExp ps e) = parensIf (i > noPrec) $ char '\\'
-                                               <> hsep (map pprPat ps)
-                                              <+> text "->" <+> pprExp e
-pprExpI _ (TupExp es) = parens $ sep $ punctuate comma $ map pprExp es
+                        <+> pprExp op
+                        <+> pprExpI opPrec e2
+pprExpI _ (InfixE me1 op me2) = parens $ pprMaybeExp noPrec me1
+                                     <+> pprExp op
+                                     <+> pprMaybeExp noPrec me2
+pprExpI i (LamE ps e) = parensIf (i > noPrec) $ char '\\'
+                                             <> hsep (map pprPat ps)
+                                            <+> text "->" <+> pprExp e
+pprExpI _ (TupE es) = parens $ sep $ punctuate comma $ map pprExp es
 -- Nesting in Cond is to avoid potential problems in do statments
-pprExpI i (CondExp guard true false)
+pprExpI i (CondE guard true false)
  = parensIf (i > noPrec) $ sep [text "if" <+> pprExp guard,
                            nest 1 $ text "then" <+> pprExp true,
                            nest 1 $ text "else" <+> pprExp false]
-pprExpI i (LetExp ds e)
+pprExpI i (LetE ds e)
     = parensIf (i > noPrec) $ text "let" <+> vcat (map pprDec ds)
                            $$ text " in" <+> pprExp e
-pprExpI i (CaseExp e ms)
+pprExpI i (CaseE e ms)
  = parensIf (i > noPrec) $ text "case" <+> pprExp e <+> text "of"
                         $$ nest nestDepth (vcat $ map pprMatch ms)
-pprExpI i (DoExp ss) = parensIf (i > noPrec) $ text "do"
-                                           <+> vcat (map pprStmt ss)
-pprExpI _ (CompExp []) = error "Can't happen: pprExpI (CompExp [])"
+pprExpI i (DoE ss) = parensIf (i > noPrec) $ text "do"
+                                         <+> vcat (map pprStmt ss)
+pprExpI _ (CompE []) = error "Can't happen: pprExpI (CompExp [])"
 -- This will probably break with fixity declarations - would need a ';'
-pprExpI _ (CompExp ss) = text "[" <> pprStmt s
-                     <+> text "|"
-                     <+> (sep $ punctuate comma $ map pprStmt ss')
-                      <> text "]"
+pprExpI _ (CompE ss) = text "[" <> pprStmt s
+                   <+> text "|"
+                   <+> (sep $ punctuate comma $ map pprStmt ss')
+                    <> text "]"
   where s = last ss
         ss' = init ss
-pprExpI _ (ArithSeqExp d) = pprDotDot d
-pprExpI _ (ListExp es) = brackets $ sep $ punctuate comma $ map pprExp es
-	-- 5 :: Int :: Int will break, but that's a silly thing to do anyway
-pprExpI i (SigExp e t)
- = parensIf (i > noPrec) $ pprExp e <+> text "::" <+> pprTyp t
-pprExpI _ (RecConExp nm fs) = text nm <> braces (pprFields fs)
-pprExpI _ (RecUpdExp e fs) = pprExpI appPrec e <> braces (pprFields fs)
+pprExpI _ (ArithSeqE d) = pprRange d
+pprExpI _ (ListE es) = brackets $ sep $ punctuate comma $ map pprExp es
+    -- 5 :: Int :: Int will break, but that's a silly thing to do anyway
+pprExpI i (SigE e t)
+ = parensIf (i > noPrec) $ pprExp e <+> text "::" <+> pprType t
+pprExpI _ (RecConE nm fs) = text nm <> braces (pprFields fs)
+pprExpI _ (RecUpdE e fs) = pprExpI appPrec e <> braces (pprFields fs)
 
 pprFields :: [(String,Exp)] -> Doc
 pprFields = sep . punctuate comma
@@ -648,63 +671,65 @@ pprMaybeExp i (Just e) = pprExpI i e
 
 ------------------------------
 pprStmt :: Stmt -> Doc
-pprStmt (BindStmt p e) = pprPat p <+> text "<-" <+> pprExp e
-pprStmt (LetStmt ds) = text "let" <+> vcat (map pprDec ds)
-pprStmt (NoBindStmt e) = pprExp e
-pprStmt (ParStmt sss) = sep $ punctuate (text "|")
+pprStmt (BindS p e) = pprPat p <+> text "<-" <+> pprExp e
+pprStmt (LetS ds) = text "let" <+> vcat (map pprDec ds)
+pprStmt (NoBindS e) = pprExp e
+pprStmt (ParS sss) = sep $ punctuate (text "|")
                       $ map (sep . punctuate comma . map pprStmt) sss
 
 ------------------------------
 pprMatch :: Match -> Doc
-pprMatch (Match p rhs ds) = pprPat p <+> pprRHS False rhs
+pprMatch (Match p rhs ds) = pprPat p <+> pprBody False rhs
                          $$ where_clause ds
 
 ------------------------------
-pprRHS :: Bool -> RHS -> Doc
-pprRHS eq (GuardedRHS xs) = nest nestDepth $ vcat $ map do_guard xs
+pprBody :: Bool -> Body -> Doc
+pprBody eq (GuardedB xs) = nest nestDepth $ vcat $ map do_guard xs
   where eqd = if eq then text "=" else text "->"
         do_guard (lhs, rhs) = text "|" <+> pprExp lhs <+> eqd <+> pprExp rhs
-pprRHS eq (NormalRHS e) = (if eq then text "=" else text "->")
-                      <+> pprExp e
+pprBody eq (NormalB e) = (if eq then text "=" else text "->")
+                        <+> pprExp e
 
 ------------------------------
 pprLit :: Precedence -> Lit -> Doc
-pprLit i (IntPrimLit x)    = parensIf (i > noPrec && x < 0)
-                                      (integer x <> char '#')
-pprLit i (FloatPrimLit x)  = parensIf (i > noPrec && x < 0)
-                                      (float (fromRational x) <> char '#')
-pprLit i (DoublePrimLit x) = parensIf (i > noPrec && x < 0)
-                                      (double (fromRational x) <> text "##")
-pprLit i (IntegerLit x)    = parensIf (i > noPrec && x < 0) (integer x)
-pprLit _ (CharLit c)       = text (show c)
-pprLit _ (StringLit s)     = text (show s)
-pprLit i (RationalLit rat) = parensIf (i > noPrec) $ rational rat
+pprLit i (IntPrimL x)    = parensIf (i > noPrec && x < 0)
+                                    (integer x <> char '#')
+pprLit i (FloatPrimL x)  = parensIf (i > noPrec && x < 0)
+                                    (float (fromRational x) <> char '#')
+pprLit i (DoublePrimL x) = parensIf (i > noPrec && x < 0)
+                                    (double (fromRational x) <> text "##")
+pprLit i (IntegerL x)    = parensIf (i > noPrec && x < 0) (integer x)
+pprLit _ (CharL c)       = text (show c)
+pprLit _ (StringL s)     = text (show s)
+pprLit i (RationalL rat) = parensIf (i > noPrec) $ rational rat
 
 ------------------------------
 pprPat :: Pat -> Doc
 pprPat = pprPatI noPrec
 
 pprPatI :: Precedence -> Pat -> Doc
-pprPatI i (LitPat l)     = pprLit i l
-pprPatI _ (VarPat v)     = text v
-pprPatI _ (TupPat ps)    = parens $ sep $ punctuate comma $ map pprPat ps
-pprPatI i (ConPat s ps)  = parensIf (i > noPrec) $ text s <+> sep (map (pprPatI appPrec) ps)
-pprPatI i (TildePat p)   = parensIf (i > noPrec) $ pprPatI appPrec p
-pprPatI i (AsPat v p) = parensIf (i > noPrec) $ text v <> text "@" <> pprPatI appPrec p
-pprPatI _ WildPat = text "_"
-pprPatI _ (RecPat nm fs)
+pprPatI i (LitP l)     = pprLit i l
+pprPatI _ (VarP v)     = text v
+pprPatI _ (TupP ps)    = parens $ sep $ punctuate comma $ map pprPat ps
+pprPatI i (ConP s ps)  = parensIf (i > noPrec) $ text s
+                                             <+> sep (map (pprPatI appPrec) ps)
+pprPatI i (TildeP p)   = parensIf (i > noPrec) $ pprPatI appPrec p
+pprPatI i (AsP v p)    = parensIf (i > noPrec) $ text v <> text "@"
+                                                        <> pprPatI appPrec p
+pprPatI _ WildP        = text "_"
+pprPatI _ (RecP nm fs)
  = parens $     text nm
             <+> braces (sep $ punctuate comma $
                         map (\(s,p) -> text s <+> equals <+> pprPat p) fs)
 
 ------------------------------
 pprDec :: Dec -> Doc
-pprDec (FunDec f cs)   = vcat $ map (\c -> text f <+> pprClause c) cs
-pprDec (ValDec p r ds) = pprPat p <+> pprRHS True r
-                      $$ where_clause ds
-pprDec (TySynDec t xs rhs) = text "type" <+> text t <+> hsep (map text xs) 
-                         <+> text "=" <+> pprTyp rhs
-pprDec (DataDec ctxt t xs cs decs)
+pprDec (FunD f cs)   = vcat $ map (\c -> text f <+> pprClause c) cs
+pprDec (ValD p r ds) = pprPat p <+> pprBody True r
+                    $$ where_clause ds
+pprDec (TySynD t xs rhs) = text "type" <+> text t <+> hsep (map text xs) 
+                       <+> text "=" <+> pprType rhs
+pprDec (DataD ctxt t xs cs decs)
     = text "data"
   <+> pprCxt ctxt
   <+> text t <+> hsep (map text xs)
@@ -717,7 +742,7 @@ pprDec (DataDec ctxt t xs cs decs)
     where pref :: [Doc] -> [Doc]
           pref [] = [char '='] -- Can't happen in H98
           pref (d:ds) = (char '=' <+> d):map (char '|' <+>) ds
-pprDec (NewtypeDec ctxt t xs c decs)
+pprDec (NewtypeD ctxt t xs c decs)
     = text "newtype"
   <+> pprCxt ctxt
   <+> text t <+> hsep (map text xs)
@@ -727,110 +752,106 @@ pprDec (NewtypeDec ctxt t xs c decs)
       else nest nestDepth
          $ text "deriving"
        <+> parens (hsep $ punctuate comma $ map text decs)
-pprDec (ClassDec ctxt c xs ds) = text "class" <+> pprCxt ctxt
-                             <+> text c <+> hsep (map text xs)
-                              $$ where_clause ds
-pprDec (InstanceDec ctxt i ds) = text "instance" <+> pprCxt ctxt <+> pprTyp i
-                              $$ where_clause ds
-pprDec (SigDec f t) = text f <+> text "::" <+> pprTyp t
-pprDec (ForeignDec f) = pprForeign f
+pprDec (ClassD ctxt c xs ds) = text "class" <+> pprCxt ctxt
+                           <+> text c <+> hsep (map text xs)
+                            $$ where_clause ds
+pprDec (InstanceD ctxt i ds) = text "instance" <+> pprCxt ctxt <+> pprType i
+                            $$ where_clause ds
+pprDec (SigD f t) = text f <+> text "::" <+> pprType t
+pprDec (ForeignD f) = pprForeign f
 
 ------------------------------
 pprForeign :: Foreign -> Doc
-pprForeign (ImportForeign callconv safety impent as typ)
+pprForeign (ImportF callconv safety impent as typ)
     = text "foreign import"
   <+> showtextl callconv
   <+> showtextl safety
   <+> text (show impent)
   <+> text as
-  <+> text "::" <+> pprTyp typ
+  <+> text "::" <+> pprType typ
 
 ------------------------------
 pprClause :: Clause -> Doc
-pprClause (Clause ps rhs ds) = hsep (map pprPat ps) <+> pprRHS True rhs
+pprClause (Clause ps rhs ds) = hsep (map pprPat ps) <+> pprBody True rhs
                             $$ where_clause ds
 
 ------------------------------
 pprCon :: Con -> Doc
-pprCon (NormalCon c sts) = text c <+> hsep (map pprStrictTyp sts)
-pprCon (RecCon c vsts) = text c
-                     <+> char '{'
-                      <> hsep (punctuate comma $ map pprVarStrictTyp vsts)
-                      <> char '}'
-pprCon (InfixCon st1 c st2) = pprStrictTyp st1
-                          <+> text c
-                          <+> pprStrictTyp st2
+pprCon (NormalC c sts) = text c <+> hsep (map pprStrictType sts)
+pprCon (RecC c vsts) = text c
+                   <+> char '{'
+                    <> hsep (punctuate comma $ map pprVarStrictType vsts)
+                    <> char '}'
+pprCon (InfixC st1 c st2) = pprStrictType st1
+                        <+> text c
+                        <+> pprStrictType st2
 
 ------------------------------
-pprVarStrictTyp :: (String, Strict, Typ) -> Doc
-pprVarStrictTyp (v, str, t) = text v <+> text "::" <+> pprStrictTyp (str, t)
+pprVarStrictType :: (String, Strict, Type) -> Doc
+pprVarStrictType (v, str, t) = text v <+> text "::" <+> pprStrictType (str, t)
 
 ------------------------------
-pprStrictTyp :: (Strict, Typ) -> Doc
-pprStrictTyp (IsStrict, t) = char '!' <> pprTyp t
-pprStrictTyp (NotStrict, t) = pprTyp t
+pprStrictType :: (Strict, Type) -> Doc
+pprStrictType (IsStrict, t) = char '!' <> pprType t
+pprStrictType (NotStrict, t) = pprType t
 
 ------------------------------
-pprParendTyp :: Typ -> Doc
-pprParendTyp (VarTyp s) = text s
-pprParendTyp (ConTyp t) = pprConTyp t
-pprParendTyp other    = parens (pprTyp other)
+pprParendType :: Type -> Doc
+pprParendType (VarT v)   = text v
+pprParendType (ConT c)   = text c
+pprParendType (TupleT 0) = text "()"
+pprParendType (TupleT n) = parens (hcat (replicate (n-1) comma))
+pprParendType ArrowT     = parens (text "->")
+pprParendType ListT      = text "[]"
+pprParendType other      = parens (pprType other)
 
-pprTyp :: Typ -> Doc
-pprTyp (ForallTyp tvars ctxt ty) = 
+pprType :: Type -> Doc
+pprType (ForallT tvars ctxt ty) = 
   text "forall" <+> hsep (map text tvars) <+> text "." <+> 
-  ctxtDoc <+> pprTyp ty
+  ctxtDoc <+> pprType ty
   where
     ctxtDoc | null ctxt = empty
-	    | otherwise = parens (sep (punctuate comma (map pprTyp ctxt))) <+>
-			  text "=>"
-pprTyp ty		       = pprTyApp (split ty)
+        | otherwise = parens (sep (punctuate comma (map pprType ctxt))) <+>
+              text "=>"
+pprType ty               = pprTyApp (split ty)
 
-pprTyApp :: (Typ, [Typ]) -> Doc
-pprTyApp (ConTyp ArrowTag, [arg1,arg2])
-  = sep [pprTyp arg1 <+> text "->", pprTyp arg2]
+pprTyApp :: (Type, [Type]) -> Doc
+pprTyApp (ArrowT, [arg1,arg2])
+  = sep [pprType arg1 <+> text "->", pprType arg2]
 
-pprTyApp (ConTyp ListTag, [arg])
-  = brackets (pprTyp arg)
+pprTyApp (ListT, [arg]) = brackets (pprType arg)
 
-pprTyApp (ConTyp (TupleTag n), args)
-  | length args == n
-  = parens (sep (punctuate comma (map pprTyp args)))
+pprTyApp (TupleT n, args)
+ | length args == n
+    = parens (sep (punctuate comma (map pprType args)))
 
 pprTyApp (fun, args)
-  = pprParendTyp fun <+> sep (map pprParendTyp args)
+  = pprParendType fun <+> sep (map pprParendType args)
 
-pprConTyp :: Tag -> Doc
-pprConTyp (TupleTag 0)   = text "()"
-pprConTyp (TupleTag n)   = parens (hcat (replicate (n-1) comma))
-pprConTyp ArrowTag       = parens (text "->")
-pprConTyp ListTag        = text "[]"
-pprConTyp (ConNameTag s) = text s
-
-split :: Typ -> (Typ, [Typ])	-- Split into function and args
+split :: Type -> (Type, [Type])    -- Split into function and args
 split t = go t []
-	where
-	  go (AppTyp t1 t2) args = go t1 (t2:args)
-	  go ty             args = (ty, args)
+    where
+      go (AppT t1 t2) args = go t1 (t2:args)
+      go ty           args = (ty, args)
 
 ------------------------------
 pprCxt :: Cxt -> Doc
 pprCxt [] = empty
-pprCxt [t] = pprTyp t <+> text "=>"
-pprCxt ts = parens (hsep $ punctuate comma $ map pprTyp ts) <+> text "=>"
+pprCxt [t] = pprType t <+> text "=>"
+pprCxt ts = parens (hsep $ punctuate comma $ map pprType ts) <+> text "=>"
 
 ------------------------------
-pprDotDot :: DotDot -> Doc
-pprDotDot = brackets . pprDotDotI
+pprRange :: Range -> Doc
+pprRange = brackets . pprRangeI
 
-pprDotDotI :: DotDot -> Doc
-pprDotDotI (FromDotDot e) = pprExp e <> text ".."
-pprDotDotI (FromThenDotDot e1 e2) = pprExp e1 <> text ","
-                                 <> pprExp e2 <> text ".."
-pprDotDotI (FromToDotDot e1 e2) = pprExp e1 <> text ".." <> pprExp e2
-pprDotDotI (FromThenToDotDot e1 e2 e3) = pprExp e1 <> text ","
-                                      <> pprExp e2 <> text ".."
-                                      <> pprExp e3
+pprRangeI :: Range -> Doc
+pprRangeI (FromR e) = pprExp e <> text ".."
+pprRangeI (FromThenR e1 e2) = pprExp e1 <> text ","
+                           <> pprExp e2 <> text ".."
+pprRangeI (FromToR e1 e2) = pprExp e1 <> text ".." <> pprExp e2
+pprRangeI (FromThenToR e1 e2 e3) = pprExp e1 <> text ","
+                                <> pprExp e2 <> text ".."
+                                <> pprExp e3
 
 ------------------------------
 where_clause :: [Dec] -> Doc
