@@ -411,9 +411,9 @@ instance Pretty HsConDecl where
 		pretty name <> (braceList . map ppField $ fieldList)
 
 	pretty (HsConDecl _pos name@(HsSymbol _) [l, r]) =
-		myFsep [pretty l, ppHsName name, pretty r]
+		myFsep [prettyPrec 1 l, ppHsName name, prettyPrec 1 r]
 	pretty (HsConDecl _pos name typeList) =
-		mySep $ ppHsName name : map pretty typeList
+		mySep $ ppHsName name : map (prettyPrec 2) typeList
 
 ppField :: ([HsName],HsBangType) -> Doc
 ppField (names, ty) =
@@ -421,8 +421,8 @@ ppField (names, ty) =
 		       [text "::", pretty ty]
 
 instance Pretty HsBangType where
-	pretty (HsBangedTy ty) = char '!' <> ppHsTypeArg ty
-	pretty (HsUnBangedTy ty) = ppHsTypeArg ty
+	prettyPrec _ (HsBangedTy ty) = char '!' <> ppHsTypeArg ty
+	prettyPrec p (HsUnBangedTy ty) = prettyPrec p ty
 
 ppHsDeriving :: [HsQName] -> Doc
 ppHsDeriving []  = empty
@@ -438,9 +438,9 @@ ppHsTypeArg :: HsType -> Doc
 ppHsTypeArg = prettyPrec 2
 
 -- precedences:
--- 0: top level
--- 1: left argument of ->
--- 2: argument of constructor
+-- 0: top level (i.e. type)
+-- 1: left argument of -> (i.e. btype)
+-- 2: argument of constructor (i.e. atype)
 
 instance Pretty HsType where
 	prettyPrec p (HsTyFun a b) = parensIf (p > 0) $
