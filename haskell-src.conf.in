@@ -4,7 +4,7 @@ Package {
 	name		= "haskell-src",
 	auto		= True,
 #ifdef INSTALLING
-	import_dirs	= [ "$libdir/imports/haskell-src" ],
+	import_dirs	= [ "$libdir/imports" ],
 #else
 	import_dirs	= [ "$libdir/libraries/haskell-src" ],
 #endif
