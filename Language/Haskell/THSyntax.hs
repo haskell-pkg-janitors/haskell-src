@@ -80,6 +80,10 @@ instance Lift Int where
 instance Lift Char where
   lift = litE . CharL
 
+instance Lift Bool where
+  lift True = conE "GHC.Base:True"
+  lift False = conE "GHC.Base:False"
+
 instance Lift a => Lift [a] where
   lift xs = listE (map lift xs)
 
