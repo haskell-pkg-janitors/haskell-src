@@ -602,7 +602,7 @@ instance Pretty HsQName where
 ppHsQName :: HsQName -> Doc
 ppHsQName (UnQual name) = ppHsName name
 ppHsQName (Qual m name) = pretty m <> char '.' <> ppHsName name
-ppHsQName (Special sym) = text (show sym)
+ppHsQName (Special sym) = text (specialName sym)
 
 instance Pretty HsOp where
 	pretty (HsVarOp n) = ppHsNameInfix n
@@ -633,7 +633,14 @@ getName (UnQual s) = s
 getName (Qual _ s) = s
 getName (Special HsCons) = HsSymbol ":"
 getName (Special HsFunCon) = HsSymbol "->"
-getName (Special s) = HsIdent (show s)
+getName (Special s) = HsIdent (specialName s)
+
+specialName :: HsSpecialCon -> String
+specialName HsUnitCon = "()"
+specialName HsListCon = "[]"
+specialName HsFunCon = "->"
+specialName (HsTupleCon n) = "(" ++ replicate (n-1) ',' ++ ")"
+specialName HsCons = ":"
 
 ppHsContext :: HsContext -> Doc
 ppHsContext []      = empty
