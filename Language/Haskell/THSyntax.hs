@@ -41,7 +41,10 @@ instance Lift Char where
 
 ------------------------------------------------------
 
-data Lit = Int Int | Char Char
+data Lit = Int Int 
+	 | Char Char 
+	 | String String 
+	 | Rational Rational 
 
 data Pat 
   = Plit Lit                      -- { 5 or 'c' }
@@ -73,6 +76,7 @@ data Exp
   | Comp [Statement Pat Exp Dec]         -- { [ (x,y) | x <- xs, y <- ys ] }
   | ArithSeq (DotDot Exp)                -- { [ 1 ,2 .. 10 ] }
   | ListExp [ Exp ]                      -- { [1,2,3] }
+  | SigExp Exp Typ			 -- e :: t
   | Br Exp
   | Esc Exp
 
@@ -188,8 +192,10 @@ split t = go t []
 
 -------------------- Lowercase pattern syntax functions ---
 
-intL = Int
-charL = Char
+intL      = Int
+charL     = Char
+stringL   = String
+rationalL = Rational
 
 plit = Plit
 pvar = Pvar
@@ -305,6 +311,9 @@ comp ss = do { ss1 <- sequence ss; return (Comp ss1) }
 
 listExp :: [Expr] -> Expr
 listExp es = do { es1 <- sequence es; return (ListExp es1)}
+
+sigExp :: Expr -> Type -> Expr
+sigExp e t = do { e1 <- e; let { t1 = t}; return (SigExp e1 t1) }
 
 br :: Expr -> Expr
 br e = do { x <- e; return (Br x) }
