@@ -380,8 +380,8 @@ instance Pretty HsMatch where
 			l:r:ps' | isSymbolName f ->
 				let hd = [pretty l, ppHsName f, pretty r] in
 				if null ps' then hd
-				else parens (myFsep hd) : map pretty ps'
-			_ -> pretty f : map pretty ps
+				else parens (myFsep hd) : map (prettyPrec 2) ps'
+			_ -> pretty f : map (prettyPrec 2) ps
 
 ppWhere [] = empty
 ppWhere l = nest 2 (text "where" $$$ body whereIndent (map pretty l))
@@ -518,23 +518,26 @@ instance Pretty HsExp where
 ------------------------- Patterns -----------------------------
 
 instance Pretty HsPat where
-	pretty (HsPVar name) = pretty name
-	pretty (HsPLit lit) = pretty lit
-	pretty (HsPNeg p) = myFsep [char '-', pretty p]
-	pretty (HsPInfixApp a op b) =
+	prettyPrec _ (HsPVar name) = pretty name
+	prettyPrec _ (HsPLit lit) = pretty lit
+	prettyPrec _ (HsPNeg p) = myFsep [char '-', pretty p]
+	prettyPrec p (HsPInfixApp a op b) = parensIf (p > 0) $
 		myFsep [pretty a, pretty (HsQConOp op), pretty b]
-	pretty (HsPApp n ps) = myFsep (pretty n : map pretty ps)
-	pretty (HsPTuple ps) = parenList . map pretty $ ps
-	pretty (HsPList ps) = bracketList . punctuate comma . map pretty $ ps
-	pretty (HsPParen p) = parens . pretty $ p
-	pretty (HsPRec c fields) =
+	prettyPrec p (HsPApp n ps) = parensIf (p > 1) $
+		myFsep (pretty n : map pretty ps)
+	prettyPrec _ (HsPTuple ps) = parenList . map pretty $ ps
+	prettyPrec _ (HsPList ps) =
+		bracketList . punctuate comma . map pretty $ ps
+	prettyPrec _ (HsPParen p) = parens . pretty $ p
+	prettyPrec _ (HsPRec c fields) =
 		pretty c <> (braceList . map pretty $ fields)
 	-- special case that would otherwise be buggy
-	pretty (HsPAsPat name (HsPIrrPat pat)) =
+	prettyPrec _ (HsPAsPat name (HsPIrrPat pat)) =
 		myFsep [pretty name <> char '@', char '~' <> pretty pat]
-	pretty (HsPAsPat name pat) = hcat [pretty name, char '@', pretty pat]
-	pretty HsPWildCard = char '_'
-	pretty (HsPIrrPat pat) = char '~' <> pretty pat
+	prettyPrec _ (HsPAsPat name pat) =
+		hcat [pretty name, char '@', pretty pat]
+	prettyPrec _ HsPWildCard = char '_'
+	prettyPrec _ (HsPIrrPat pat) = char '~' <> pretty pat
 
 instance Pretty HsPatField where
 	pretty (HsPFieldPat name pat) =
