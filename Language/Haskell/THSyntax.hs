@@ -81,6 +81,9 @@ data Lit = Char Char
 	 | Integer Integer 	-- Used for overloaded and non-overloaded literals
 				-- We don't have a good way to represent non-overloaded
 				-- literals at the moment.  Maybe that doesn't matter?
+     | IntPrim Integer
+     | FloatPrim Rational
+     | DoublePrim Rational
 	 | Rational Rational 	-- Ditto
 	 deriving( Show )
 
@@ -231,10 +234,13 @@ runP x = x
 
 -------------------- Lowercase pattern syntax functions ---
 
-integerL  = Integer
-charL     = Char
-stringL   = String
-rationalL = Rational
+intPrimL    = IntPrim
+floatPrimL  = FloatPrim
+doublePrimL = DoublePrim
+integerL    = Integer
+charL       = Char
+stringL     = String
+rationalL   = Rational
 
 plit = Plit
 pvar = Pvar
@@ -611,10 +617,16 @@ pprRhs eq (Normal e) = (if eq then text "=" else text "->")
 
 ------------------------------
 pprLit :: Precedence -> Lit -> Doc
-pprLit i (Integer x) = parensIf (i > noPrec && x < 0) (integer x)
-pprLit _ (Char c)    = text (show c)
-pprLit _ (String s)  = text (show s)
-pprLit i (Rational rat) = parensIf (i > noPrec) $ text $ show rat
+pprLit i (IntPrim x)    = parensIf (i > noPrec && x < 0)
+                                   (integer x <> char '#')
+pprLit i (FloatPrim x)  = parensIf (i > noPrec && x < 0)
+                                   (float (fromRational x) <> char '#')
+pprLit i (DoublePrim x) = parensIf (i > noPrec && x < 0)
+                                   (double (fromRational x) <> text "##")
+pprLit i (Integer x)    = parensIf (i > noPrec && x < 0) (integer x)
+pprLit _ (Char c)       = text (show c)
+pprLit _ (String s)     = text (show s)
+pprLit i (Rational rat) = parensIf (i > noPrec) $ rational rat
 
 ------------------------------
 pprPat :: Pat -> Doc
