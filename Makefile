@@ -1,11 +1,12 @@
 # -----------------------------------------------------------------------------
-# $Id: Makefile,v 1.4 2002/06/21 13:56:47 simonmar Exp $
+# $Id: Makefile,v 1.5 2002/06/24 14:40:02 simonmar Exp $
 
 TOP=..
 include $(TOP)/mk/boilerplate.mk
 
 ALL_DIRS     = Language/Haskell
 PACKAGE      = haskell-src
+PACKAGE_DEPS = base
 
 SRC_HAPPY_OPTS += $(GHC_HAPPY_OPTS)
 
