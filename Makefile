@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# $Id: Makefile,v 1.7 2003/05/04 13:21:49 igloo Exp $
+# $Id: Makefile,v 1.8 2003/06/07 11:20:49 ross Exp $
 
 TOP=..
 include $(TOP)/mk/boilerplate.mk
@@ -7,8 +7,6 @@ include $(TOP)/mk/boilerplate.mk
 ALL_DIRS     = Language/Haskell
 PACKAGE      = haskell-src
 PACKAGE_DEPS = base
-
-SRC_HAPPY_OPTS += $(GHC_HAPPY_OPTS)
 
 Language/Haskell/Parser_HC_OPTS += -Onot -fno-warn-incomplete-patterns
 Language/Haskell/THSyntax_HC_OPTS += -fglasgow-exts
