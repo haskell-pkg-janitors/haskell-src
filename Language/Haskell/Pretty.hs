@@ -353,12 +353,12 @@ instance Pretty HsDecl where
 		blankline $
 		markLine pos $
 		mySep ( [text "instance", ppHsContext context, pretty name]
-			++ map ppHsTypeArg args)
+			++ map ppHsAType args)
 	pretty (HsInstDecl pos context name args declList) =
 		blankline $
 		markLine pos $
 		mySep ( [text "instance", ppHsContext context, pretty name]
-			++ map ppHsTypeArg args ++ [text "where"])
+			++ map ppHsAType args ++ [text "where"])
 		$$$ ppBody classIndent (map pretty declList)
 
 	pretty (HsDefaultDecl pos htypes) =
@@ -413,9 +413,10 @@ instance Pretty HsConDecl where
 		pretty name <> (braceList . map ppField $ fieldList)
 
 	pretty (HsConDecl _pos name@(HsSymbol _) [l, r]) =
-		myFsep [prettyPrec 1 l, ppHsName name, prettyPrec 1 r]
+		myFsep [prettyPrec prec_btype l, ppHsName name,
+			prettyPrec prec_btype r]
 	pretty (HsConDecl _pos name typeList) =
-		mySep $ ppHsName name : map (prettyPrec 2) typeList
+		mySep $ ppHsName name : map (prettyPrec prec_atype) typeList
 
 ppField :: ([HsName],HsBangType) -> Doc
 ppField (names, ty) =
@@ -423,7 +424,7 @@ ppField (names, ty) =
 		       [text "::", pretty ty]
 
 instance Pretty HsBangType where
-	prettyPrec _ (HsBangedTy ty) = char '!' <> ppHsTypeArg ty
+	prettyPrec _ (HsBangedTy ty) = char '!' <> ppHsAType ty
 	prettyPrec p (HsUnBangedTy ty) = prettyPrec p ty
 
 ppHsDeriving :: [HsQName] -> Doc
@@ -436,22 +437,26 @@ instance Pretty HsQualType where
 	pretty (HsQualType context htype) =
 		myFsep [ppHsContext context, pretty htype]
 
-ppHsTypeArg :: HsType -> Doc
-ppHsTypeArg = prettyPrec 2
+ppHsBType :: HsType -> Doc
+ppHsBType = prettyPrec prec_btype
 
--- precedences:
--- 0: top level (i.e. type)
--- 1: left argument of -> (i.e. btype)
--- 2: argument of constructor (i.e. atype)
+ppHsAType :: HsType -> Doc
+ppHsAType = prettyPrec prec_atype
+
+-- precedences for types
+prec_btype, prec_atype :: Int
+prec_btype = 1	-- left argument of ->,
+		-- or either argument of an infix data constructor
+prec_atype = 2	-- argument of type or data constructor, or of a class
 
 instance Pretty HsType where
 	prettyPrec p (HsTyFun a b) = parensIf (p > 0) $
-		myFsep [prettyPrec 1 a, text "->", pretty b]
+		myFsep [ppHsBType a, text "->", pretty b]
 	prettyPrec _ (HsTyTuple l) = parenList . map pretty $ l
 	prettyPrec p (HsTyApp a b)
 		| a == list_tycon = brackets $ pretty b		-- special case
-		| otherwise = parensIf (p > 1) $
-			myFsep [pretty a, prettyPrec 2 b]
+		| otherwise = parensIf (p > prec_btype) $
+			myFsep [pretty a, ppHsAType b]
 	prettyPrec _ (HsTyVar name) = pretty name
 	prettyPrec _ (HsTyCon name) = pretty name
 
@@ -651,7 +656,7 @@ ppHsContext context = mySep [parenList (map ppHsAsst context), text "=>"]
 -- hacked for multi-parameter type classes
 
 ppHsAsst :: HsAsst -> Doc
-ppHsAsst (a,ts) = myFsep (ppHsQName a : map ppHsTypeArg ts)
+ppHsAsst (a,ts) = myFsep (ppHsQName a : map ppHsAType ts)
 
 ------------------------- pp utils -------------------------
 maybePP :: (a -> Doc) -> Maybe a -> Doc
