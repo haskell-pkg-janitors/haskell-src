@@ -120,6 +120,7 @@ data Pat
   | AsP String Pat                -- { x @ p }
   | WildP                         -- { _ }
   | RecP String [FieldPat]        -- f (Pt { pointx = x }) = g x
+  | ListP [ Pat ]                 -- { [1,2,3] }
   deriving( Show )
 
 type FieldPat = (String,Pat)
@@ -293,6 +294,8 @@ wildP :: Pat
 wildP = WildP
 recP :: String -> [FieldPat] -> Pat
 recP = RecP
+listP :: [Pat] -> Pat
+listP = ListP
 
 fieldPat :: String -> Pat -> (String, Pat)
 fieldPat = (,)
@@ -574,6 +577,8 @@ rename WildP = return([],WildP)
 rename (RecP nm fs) = do { pairs <- mapM rename ps; g(combine pairs) }
     where g (env,ps') = return (env,RecP nm (zip ss ps'))
           (ss,ps) = unzip fs
+rename (ListP pats) = do { pairs <- mapM rename pats; g(combine pairs) }
+   where g (es,ps) = return (es,ListP ps)
 
 genpat :: Pat -> Q ((String -> ExpQ), Pat)
 genpat p = do { (env,p2) <- rename p; return (alpha env,p2) }
@@ -725,6 +730,7 @@ pprPatI _ (RecP nm fs)
  = parens $     text nm
             <+> braces (sep $ punctuate comma $
                         map (\(s,p) -> text s <+> equals <+> pprPat p) fs)
+pprPatI _ (ListP ps) = brackets $ sep $ punctuate comma $ map pprPat ps
 
 ------------------------------
 pprDec :: Dec -> Doc
