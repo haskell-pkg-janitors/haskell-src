@@ -54,15 +54,23 @@ gensym s = Q( do { n <- readIORef counter
                  ; return(s++"'"++(show n)) })
 
 class Lift t where
-  lift :: t -> Exp
-  -- FIXME: This is different from the paper where the result type is is
-  --   Expr.  What is right?  -=chak
+  lift :: t -> Expr
   
 instance Lift Integer where
-  lift = Lit . Integer
+  lift = return . Lit . Integer
 
 instance Lift Char where
-  lift = Lit . Char
+  lift = return . Lit . Char
+
+instance Lift a => Lift [a] where
+  {-# SPECIALISE instance Lift [Char] #-}
+  lift xs = listExp (map lift xs)
+
+-- TH has a special form for literal strings,
+-- which we should take advantage of
+{-# RULES "TH:liftString" forall s. lift s = return (Lit (String s)) #-}
+
+
 
 ------------------------------------------------------
 
@@ -261,13 +269,13 @@ clause ps r ds = do { r' <- r; ds' <- sequence ds; return (Clause ps r' ds') }
 -- 	Expr
 
 global :: String -> Expr
-global s = return(Var s)
+global s = return (Var s)
 
 var :: String -> Expr
-var s = return(Var s)
+var s = return (Var s)
 
 con :: String -> Expr
-con s =  return(Con s)
+con s =  return (Con s)
 
 lit :: Lit -> Expr
 lit c = return (Lit c)
@@ -322,7 +330,7 @@ comp :: [Stmt] -> Expr
 comp ss = do { ss1 <- sequence ss; return (Comp ss1) } 
 
 listExp :: [Expr] -> Expr
-listExp es = do { es1 <- sequence es; return (ListExp es1)}
+listExp es = do { es1 <- sequence es; return (ListExp es1) }
 
 sigExp :: Expr -> Type -> Expr
 sigExp e t = do { e1 <- e; t1 <- t; return (SigExp e1 t1) }
