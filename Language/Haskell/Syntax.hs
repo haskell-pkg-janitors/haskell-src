@@ -37,6 +37,7 @@ module Language.Haskell.Syntax (
     HsLiteral(..),
     -- * Variables, Constructors and Operators
     Module(..), HsQName(..), HsName(..), HsQOp(..), HsOp(..),
+    HsCName(..),
 
     -- * Builtin names
 
@@ -110,6 +111,15 @@ instance Show HsOp where
    showsPrec p (HsVarOp n) = showsPrec p n
    showsPrec p (HsConOp n) = showsPrec p n
 
+data HsCName
+	= HsVarName HsName
+	| HsConName HsName
+  deriving (Eq,Ord)
+
+instance Show HsCName where
+   showsPrec p (HsVarName n) = showsPrec p n
+   showsPrec p (HsConName n) = showsPrec p n
+
 data HsModule = HsModule SrcLoc Module (Maybe [HsExportSpec])
                          [HsImportDecl] [HsDecl]
   deriving Show
@@ -123,7 +133,7 @@ data HsExportSpec
 	 | HsEThingAll HsQName			-- ^ @T(..)@:
 			-- a class exported with all of its methods, or
 			-- a datatype exported with all of its constructors.
-	 | HsEThingWith HsQName [HsName]	-- ^ @T(C_1,...,C_n)@:
+	 | HsEThingWith HsQName [HsCName]	-- ^ @T(C_1,...,C_n)@:
 			-- a class exported with some of its methods, or
 			-- a datatype exported with some of its constructors.
 	 | HsEModuleContents Module		-- ^ @module M@:
@@ -144,7 +154,7 @@ data HsImportSpec
 	 | HsIThingAll HsName			-- ^ @T(..)@:
 			-- a class imported with all of its methods, or
 			-- a datatype imported with all of its constructors.
-	 | HsIThingWith HsName [HsName]		-- ^ @T(C_1,...,C_n)@:
+	 | HsIThingWith HsName [HsCName]	-- ^ @T(C_1,...,C_n)@:
 			-- a class imported with some of its methods, or
 			-- a datatype imported with some of its constructors.
   deriving (Eq,Show)

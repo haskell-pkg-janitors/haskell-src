@@ -215,13 +215,13 @@ Import Declarations
 > 	|  tyconorcls '(' ')'		        { HsIThingWith $1 [] }
 > 	|  tyconorcls '(' cnames ')'		{ HsIThingWith $1 (reverse $3) }
 
-> cnames :: { [HsName] }
+> cnames :: { [HsCName] }
 > 	:  cnames ',' cname			{ $3 : $1 }
 > 	|  cname				{ [$1]  }
 
-> cname :: { HsName }
->	:  var					{ $1 }
-> 	|  con					{ $1 }
+> cname :: { HsCName }
+>	:  var					{ HsVarName $1 }
+> 	|  con					{ HsConName $1 }
 
 -----------------------------------------------------------------------------
 Fixity Declarations

@@ -603,6 +603,10 @@ instance Pretty HsName where
 ppHsName :: HsName -> Doc
 ppHsName name = text (show name)
 
+instance Pretty HsCName where
+	pretty (HsVarName n) = pretty n
+	pretty (HsConName n) = pretty n
+
 isSymbolName :: HsName -> Bool
 isSymbolName (HsSymbol _) = True
 isSymbolName _ = False
