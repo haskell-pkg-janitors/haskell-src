@@ -262,7 +262,8 @@ checkClassBody decls = do
 
 checkMethodDef :: HsDecl -> P ()
 checkMethodDef (HsPatBind _ (HsPVar _) _ _) = return ()
-checkMethodDef (HsPatBind _ _ _ _) = fail "illegal method definition"
+checkMethodDef (HsPatBind loc _ _ _) =
+	fail "illegal method definition" `atSrcLoc` loc
 checkMethodDef _ = return ()
 
 -----------------------------------------------------------------------------
@@ -297,10 +298,11 @@ checkRevDecls = mergeFunBinds []
 		mergeMatches ms ds
 	    where
 		arity = length ps
-		mergeMatches ms' (HsFunBind ms@(HsMatch _ name' ps' _ _:_):ds)
+		mergeMatches ms' (HsFunBind ms@(HsMatch loc name' ps' _ _:_):ds)
 		    | name' == name =
 			if length ps' /= arity
 			then fail ("arity mismatch for '" ++ show name ++ "'")
+			     `atSrcLoc` loc
 			else mergeMatches (ms++ms') ds
 		mergeMatches ms' ds = mergeFunBinds (HsFunBind ms':ds') ds
 	mergeFunBinds ds' (d:ds) = mergeFunBinds (d:ds') ds

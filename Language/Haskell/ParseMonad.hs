@@ -15,7 +15,7 @@
 
 module Language.Haskell.ParseMonad(
 		-- * Parsing
-		P, ParseResult(..), LexContext(..),
+		P, ParseResult(..), atSrcLoc, LexContext(..),
 		ParseMode(..), defaultParseMode,
 		runParserWithMode, runParser,
 		getSrcLoc, pushCurrentContext, popContext,
@@ -89,6 +89,9 @@ instance Monad P where
 		    Failed loc s -> Failed loc s
 		    Ok s' a -> runP (k a) i x y l s' mode
 	fail s = P $ \_r _col _line loc _stk _m -> Failed loc s
+
+atSrcLoc :: P a -> SrcLoc -> P a
+P m `atSrcLoc` loc = P $ \i x y _l -> m i x y loc
 
 getSrcLoc :: P SrcLoc
 getSrcLoc = P $ \_i _x _y l s _m -> Ok s l
