@@ -32,6 +32,7 @@ module Language.Haskell.ParseUtils (
 
 import Language.Haskell.Syntax
 import Language.Haskell.ParseMonad
+import Language.Haskell.Pretty
 
 splitTyConApp :: HsType -> P (HsName,[HsType])
 splitTyConApp t0 = split t0 []
@@ -304,7 +305,7 @@ checkRevDecls = mergeFunBinds []
 		mergeMatches ms' (HsFunBind ms@(HsMatch loc name' ps' _ _:_):ds)
 		    | name' == name =
 			if length ps' /= arity
-			then fail ("arity mismatch for '" ++ show name ++ "'")
+			then fail ("arity mismatch for '" ++ prettyPrint name ++ "'")
 			     `atSrcLoc` loc
 			else mergeMatches (ms++ms') ds
 		mergeMatches ms' ds = mergeFunBinds (HsFunBind ms':revDs) ds

@@ -14,7 +14,9 @@
 --   * multi-parameter type classes
 --
 --   * parameters of type class assertions are unrestricted
---
+-- 
+-- This module has been changed so that show is a real show.
+
 -----------------------------------------------------------------------------
 
 module Language.Haskell.Syntax (
@@ -80,67 +82,38 @@ data HsSpecialCon
 	| HsTupleCon Int	-- ^ /n/-ary tuple type and data
 				--   constructors @(,)@ etc
 	| HsCons		-- ^ list data constructor @(:)@
-  deriving (Eq,Ord)
+  deriving (Eq,Ord,Show)
 
-instance Show HsSpecialCon where
-	show HsUnitCon = "()"
-	show HsListCon = "[]"
-	show HsFunCon = "->"
-	show (HsTupleCon n) = "(" ++ replicate (n-1) ',' ++ ")"
-	show HsCons = ":"
-
--- |This type is used to represent qualified variables, and also
+-- | This type is used to represent qualified variables, and also
 -- qualified constructors.
 data HsQName
 	= Qual Module HsName
 	| UnQual HsName
 	| Special HsSpecialCon
-  deriving (Eq,Ord)
+  deriving (Eq,Ord,Show)
 
-instance Show HsQName where
-   showsPrec _ (Qual (Module m) s) =
-	showString m . showString "." . shows s
-   showsPrec _ (UnQual s) = shows s
-   showsPrec _ (Special s) = shows s
-
--- |This type is used to represent variables, and also constructors.
+-- | This type is used to represent variables, and also constructors.
 data HsName
 	= HsIdent String	-- ^ /varid/ or /conid/.
 	| HsSymbol String	-- ^ /varsym/ or /consym/
-  deriving (Eq,Ord)
-
-instance Show HsName where
-   showsPrec _ (HsIdent s) = showString s
-   showsPrec _ (HsSymbol s) = showString s
+  deriving (Eq,Ord,Show)
 
 -- | Possibly qualified infix operators (/qop/), appearing in expressions.
 data HsQOp
 	= HsQVarOp HsQName
 	| HsQConOp HsQName
-  deriving (Eq,Ord)
-
-instance Show HsQOp where
-   showsPrec p (HsQVarOp n) = showsPrec p n
-   showsPrec p (HsQConOp n) = showsPrec p n
+  deriving (Eq,Ord,Show)
 
 -- | Operators, appearing in @infix@ declarations.
 data HsOp
 	= HsVarOp HsName
 	| HsConOp HsName
-  deriving (Eq,Ord)
-
-instance Show HsOp where
-   showsPrec p (HsVarOp n) = showsPrec p n
-   showsPrec p (HsConOp n) = showsPrec p n
+  deriving (Eq,Ord,Show)
 
 data HsCName
 	= HsVarName HsName
 	| HsConName HsName
-  deriving (Eq,Ord)
-
-instance Show HsCName where
-   showsPrec p (HsVarName n) = showsPrec p n
-   showsPrec p (HsConName n) = showsPrec p n
+  deriving (Eq,Ord,Show)
 
 data HsModule = HsModule SrcLoc Module (Maybe [HsExportSpec])
                          [HsImportDecl] [HsDecl]
@@ -255,7 +228,7 @@ data HsLiteral
 	| HsIntPrim	Integer		-- ^ GHC unboxed integer literal
 	| HsFloatPrim	Rational	-- ^ GHC unboxed float literal
 	| HsDoublePrim	Rational	-- ^ GHC unboxed double literal
-  deriving (Eq, Show)
+  deriving (Eq,Show)
 
 -- | Haskell expressions.
 -- Because it is difficult for parsers to distinguish patterns from

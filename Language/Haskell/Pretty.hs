@@ -1,3 +1,4 @@
+{-# OPTIONS -w #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Language.Haskell.Pretty
@@ -616,7 +617,8 @@ instance Pretty HsName where
 	pretty name = parensIf (isSymbolName name) (ppHsName name)
 
 ppHsName :: HsName -> Doc
-ppHsName name = text (show name)
+ppHsName (HsIdent s)  = text s
+ppHsName (HsSymbol s) = text s
 
 instance Pretty HsCName where
 	pretty (HsVarName n) = pretty n
