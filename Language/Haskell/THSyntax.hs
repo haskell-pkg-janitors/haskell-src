@@ -1,11 +1,12 @@
 module Language.Haskell.THSyntax 
 where
 
-import Monad            (liftM)
+import Monad            ( liftM, sequence )
 
 import Data.IORef       ( IORef, newIORef, readIORef, writeIORef )
 import System.IO.Unsafe ( unsafePerformIO )
 import Text.PrettyPrint.HughesPJ
+import Char (toLower)
 
 
 -------------------------------------------------------
@@ -13,11 +14,20 @@ import Text.PrettyPrint.HughesPJ
 
 type Q a = IO a
 
+qIO :: IO a -> Q a
+qIO = id
+
+runQ :: Q a -> IO a
+runQ = id
+
 returnQ :: a -> Q a
 returnQ = return
 
 bindQ :: Q a -> (a -> Q b) -> Q b
 bindQ = (>>=)
+
+sequenceQ :: [Q a] -> Q [a]
+sequenceQ = sequence
 
 -- global variable to generate unique symbols
 --
@@ -45,6 +55,7 @@ data Lit = Int Int
 	 | Char Char 
 	 | String String 
 	 | Rational Rational 
+	 deriving( Show )
 
 data Pat 
   = Plit Lit                      -- { 5 or 'c' }
@@ -54,7 +65,7 @@ data Pat
   | Ptilde Pat                    -- { ~p }
   | Paspat String Pat             -- { x @ p }
   | Pwild                         -- { _ }
-
+  deriving( Show )
 
 
 type Match p e d  = ( p ,RightHandSide e,[d])   -- case e of { pat -> body where decs } 
@@ -77,22 +88,24 @@ data Exp
   | ArithSeq (DotDot Exp)                -- { [ 1 ,2 .. 10 ] }
   | ListExp [ Exp ]                      -- { [1,2,3] }
   | SigExp Exp Typ			 -- e :: t
-  | Br Exp
-  | Esc Exp
+  deriving( Show )
 
---left out things implicit parameters, sections
+-- Omitted: implicit parameters
 
 data RightHandSide e
   = Guarded [(e,e)]       -- f p { | e1 = e2 | e3 = e4 } where ds
-  | Normal e              -- f p = { e } where ds
+  | Normal e              -- f p { = e } where ds
+  deriving( Show )
 
 data Statement p e d
   = BindSt p e
   | LetSt [ d ]
   | NoBindSt e
   | ParSt [[Statement p e d]]
+  deriving( Show )
 
 data DotDot e = From e | FromThen e e | FromTo e e | FromThenTo e e e 
+	      deriving( Show )
   
 data Dec 
   = Fun String [Clause Pat Exp Dec]     -- { f p1 p2 = b where decs }
@@ -102,18 +115,34 @@ data Dec
   | Class Cxt String [String] [Dec]	-- { class Eq a => Ord a where ds }
   | Instance Cxt Typ [Dec]   	 	-- { instance Show w => Show [w] where ds }
   | Proto String Typ                    -- { length :: [a] -> Int }
+  | Foreign Foreign
+  deriving( Show )
+
+data Foreign = Import Callconv Safety String String Typ
+             -- | Export ...
+	     deriving( Show )
+
+data Callconv = CCall | StdCall
+	      deriving( Show )
+
+data Safety = Unsafe | Safe | Threadsafe
+	    deriving( Show )
 
 type Cxt = [Typ]	-- (Eq a, Ord b)
 
 data Con = Constr String [Typ]
+         deriving( Show )
 
 data Program = Program [ Dec ] 
+             deriving( Show )
 
-data Tag = Tuple Int | Arrow | List | TconName String deriving Eq
+data Tag = Tuple Int | Arrow | List | TconName String
+         deriving (Eq, Show)
 
 data Typ = Tvar String           -- a
          | Tcon Tag              -- T or [] or (->) or (,,) etc
          | Tapp Typ Typ          -- T a b
+ 	 deriving( Show )
  
 ---------------------------------------------------
 -- Combinator based types
@@ -148,45 +177,6 @@ runP x = x
 
 --runD :: Decl -> Dec
 --runD d = runQ 0 d
-
-
--------------------------------------------------------
--- Pretty printing
-
-pprParendTyp :: Typ -> Doc
-pprParendTyp (Tvar s) = text s
-pprParendTyp (Tcon t) = pprTcon t
-pprParendTyp other    = parens (pprTyp other)
-
-pprTyp :: Typ -> Doc
-pprTyp ty = pprTyApp (split ty)
-
-pprTyApp (Tcon Arrow, [arg1,arg2])
-  = sep [pprTyp arg1 <+> text "->", pprTyp arg2]
-
-pprTyApp (Tcon List, [arg])
-  = brackets (pprTyp arg)
-
-pprTyApp (Tcon (Tuple n), args)
-  | length args == n
-  = parens (sep (punctuate comma (map pprTyp args)))
-
-pprTyApp (fun, args)
-  = pprParendTyp fun <+> sep (map pprParendTyp args)
-
-pprTcon :: Tag -> Doc
-pprTcon (Tuple 0)    = text "()"
-pprTcon (Tuple n)    = parens (hcat (replicate (n-1) comma))
-pprTcon Arrow	     = parens (text "->")
-pprTcon List	     = text "[]"
-pprTcon (TconName s) = text s
-
-split :: Typ -> (Typ, [Typ])	-- Split into function and args
-split t = go t []
-	where
-	  go (Tvar s) 	  args = (Tvar s, args)
-	  go (Tcon t) 	  args = (Tcon t, args)
-	  go (Tapp t1 t2) args = go t1 (t2:args)
 
 
 
@@ -315,12 +305,6 @@ listExp es = do { es1 <- sequence es; return (ListExp es1)}
 sigExp :: Expr -> Type -> Expr
 sigExp e t = do { e1 <- e; let { t1 = t}; return (SigExp e1 t1) }
 
-br :: Expr -> Expr
-br e = do { x <- e; return (Br x) }
-
-esc :: Expr -> Expr
-esc e = do { x <- e; return (Esc x) }
-
 string s = listExp(map (lit . Char) s)
 
 --------------------------------------------------------------------------------
@@ -415,3 +399,214 @@ apps [x] = x
 apps (x:y:zs) = apps ( (app x y) : zs )
 
 simpleM p e = (p,Normal e,[])    
+
+
+--------------------------------------------------------------
+-- 		A pretty printer (due to Ian Lynagh)
+--------------------------------------------------------------
+
+nestDepth :: Int
+nestDepth = 4
+
+type Precedence = Int
+appPrec = 2	-- Argument of a function application
+opPrec  = 1	-- Argument of an infix operator
+noPrec  = 0	-- Others
+
+parensIf :: Bool -> Doc -> Doc
+parensIf True d = parens d
+parensIf False d = d
+
+------------------------------
+pprExp :: Exp -> Doc
+pprExp = pprExpI noPrec
+
+pprExpI :: Precedence -> Exp -> Doc
+pprExpI _ (Var v)     = text v
+pprExpI _ (Con c)     = text c
+pprExpI i (Lit l)     = pprLit i l
+pprExpI i (App e1 e2) = parensIf (i >= appPrec) $ pprExpI opPrec e1
+                                        <+> pprExpI appPrec e2
+pprExpI i (Infix (Just e1) op (Just e2))
+ = parensIf (i >= opPrec) $ pprExpI opPrec e1
+                          <+> text op
+                          <+> pprExpI opPrec e2
+pprExpI _ (Infix me1 op me2) = parens $ pprMaybeExp noPrec me1
+                                    <+> text op
+                                    <+> pprMaybeExp noPrec me2
+pprExpI i (Neg e) = parensIf (i > noPrec) $ char '-' <> pprExp e
+pprExpI i (Lam ps e) = parensIf (i > noPrec) $ char '\\'
+                                       <> hsep (map pprPat ps)
+                                      <+> text "->" <+> pprExp e
+pprExpI _ (Tup es) = parens $ sep $ punctuate comma $ map pprExp es
+-- Nesting in Cond is to avoid potential problems in do statments
+pprExpI i (Cond guard true false)
+ = parensIf (i > noPrec) $ sep [text "if" <+> pprExp guard,
+                           nest 1 $ text "then" <+> pprExp true,
+                           nest 1 $ text "else" <+> pprExp false]
+pprExpI i (Let ds e) = parensIf (i > noPrec) $ text "let" <+> vcat (map pprDec ds)
+                                       $$ text " in" <+> pprExp e
+pprExpI i (Case e ms)
+ = parensIf (i > noPrec) $ text "case" <+> pprExp e <+> text "of"
+                   $$ nest nestDepth (vcat $ map pprMatch ms)
+pprExpI i (Do ss) = parensIf (i > noPrec) $ text "do"
+                                   <+> vcat (map pprStatement ss)
+pprExpI _ (Comp []) = error "Can't happen: pprExpI (Comp [])"
+-- This will probably break with fixity declarations - would need a ';'
+pprExpI _ (Comp ss) = text "[" <> pprStatement s
+                  <+> text "|"
+                  <+> (sep $ punctuate comma $ map pprStatement ss')
+                   <> text "]"
+  where s = last ss
+        ss' = init ss
+pprExpI _ (ArithSeq d) = pprDotDot d
+pprExpI _ (ListExp es) = brackets $ sep $ punctuate comma $ map pprExp es
+	-- 5 :: Int :: Int will break, but that's a silly thing to do anyway
+pprExpI i (SigExp e t)
+ = parensIf (i > noPrec) $ pprExp e <+> text "::" <+> pprTyp t
+
+pprMaybeExp :: Precedence -> Maybe Exp -> Doc
+pprMaybeExp _ Nothing = empty
+pprMaybeExp i (Just e) = pprExpI i e
+
+------------------------------
+pprStatement :: Statement Pat Exp Dec -> Doc
+pprStatement (BindSt p e) = pprPat p <+> text "<-" <+> pprExp e
+pprStatement (LetSt ds) = text "let" <+> vcat (map pprDec ds)
+pprStatement (NoBindSt e) = pprExp e
+pprStatement (ParSt sss) = sep $ punctuate (text "|")
+                         $ map (sep . punctuate comma . map pprStatement) sss
+
+------------------------------
+pprMatch :: Match Pat Exp Dec -> Doc
+pprMatch (p, rhs, ds) = pprPat p <+> pprRhs False rhs
+                     $$ where_clause ds
+
+------------------------------
+pprRhs :: Bool -> RightHandSide Exp -> Doc
+pprRhs eq (Guarded xs) = nest nestDepth $ vcat $ map do_guard xs
+  where eqd = if eq then text "=" else text "->"
+        do_guard (lhs, rhs) = text "|" <+> pprExp lhs <+> eqd <+> pprExp rhs
+pprRhs eq (Normal e) = (if eq then text "=" else text "->")
+                       <+> pprExp e
+
+------------------------------
+pprLit :: Precedence -> Lit -> Doc
+pprLit _ (Int i) = int i
+pprLit _ (Char c) = char c
+pprLit _ (String s) = text s
+pprLit i (Rational rat) = parensIf (i > noPrec) $ text $ show rat
+
+------------------------------
+pprPat :: Pat -> Doc
+pprPat = pprPatI noPrec
+
+pprPatI :: Precedence -> Pat -> Doc
+pprPatI i (Plit l)     = pprLit i l
+pprPatI _ (Pvar v)     = text v
+pprPatI _ (Ptup ps)    = parens $ sep $ punctuate comma $ map pprPat ps
+pprPatI i (Pcon s ps)  = parensIf (i > noPrec) $ text s <+> sep (map (pprPatI appPrec) ps)
+pprPatI i (Ptilde p)   = parensIf (i > noPrec) $ pprPatI appPrec p
+pprPatI i (Paspat v p) = parensIf (i > noPrec) $ text v <> text "@" <> pprPatI appPrec p
+pprPatI _ Pwild = text "_"
+
+------------------------------
+pprDec :: Dec -> Doc
+pprDec (Fun f cs)   = vcat $ map (\c -> text f <+> pprClause c) cs
+pprDec (Val p r ds) = pprPat p <+> pprRhs True r
+                      $$ where_clause ds
+pprDec (Data t xs cs ds) = text "data" <+> text t <+> hsep (map text xs)
+                       <+> text "=" <+> sep (map pprCon cs)
+                        $$ if null ds
+                           then empty
+                           else nest nestDepth
+                              $ text "deriving"
+                            <+> parens (hsep $ punctuate comma $ map text ds)
+pprDec (Class cxt c xs ds) = text "class" <+> pprCxt cxt
+                         <+> text c <+> hsep (map text xs)
+                          $$ where_clause ds
+pprDec (Instance cxt i ds) = text "instance" <+> pprCxt cxt <+> pprTyp i
+                          $$ where_clause ds
+pprDec (Proto f t) = text f <+> text "::" <+> pprTyp t
+pprDec (Foreign f) = pprForeign f
+
+------------------------------
+pprForeign :: Foreign -> Doc
+pprForeign (Import callconv safety impent as typ) = text "foreign import"
+                                                <+> showtextl callconv
+                                                <+> showtextl safety
+                                                <+> text (show impent)
+                                                <+> text as
+                                                <+> text "::" <+> pprTyp typ
+
+------------------------------
+pprClause :: Clause Pat Exp Dec -> Doc
+pprClause (ps, rhs, ds) = hsep (map pprPat ps) <+> pprRhs True rhs
+                       $$ where_clause ds
+
+------------------------------
+pprCon :: Con -> Doc
+pprCon (Constr c ts) = text c <+> hsep (map pprTyp ts)
+
+------------------------------
+pprParendTyp :: Typ -> Doc
+pprParendTyp (Tvar s) = text s
+pprParendTyp (Tcon t) = pprTcon t
+pprParendTyp other    = parens (pprTyp other)
+
+pprTyp :: Typ -> Doc
+pprTyp ty = pprTyApp (split ty)
+
+pprTyApp (Tcon Arrow, [arg1,arg2])
+  = sep [pprTyp arg1 <+> text "->", pprTyp arg2]
+
+pprTyApp (Tcon List, [arg])
+  = brackets (pprTyp arg)
+
+pprTyApp (Tcon (Tuple n), args)
+  | length args == n
+  = parens (sep (punctuate comma (map pprTyp args)))
+
+pprTyApp (fun, args)
+  = pprParendTyp fun <+> sep (map pprParendTyp args)
+
+pprTcon :: Tag -> Doc
+pprTcon (Tuple 0)    = text "()"
+pprTcon (Tuple n)    = parens (hcat (replicate (n-1) comma))
+pprTcon Arrow	     = parens (text "->")
+pprTcon List	     = text "[]"
+pprTcon (TconName s) = text s
+
+split :: Typ -> (Typ, [Typ])	-- Split into function and args
+split t = go t []
+	where
+	  go (Tvar s) 	  args = (Tvar s, args)
+	  go (Tcon t) 	  args = (Tcon t, args)
+	  go (Tapp t1 t2) args = go t1 (t2:args)
+
+------------------------------
+pprCxt :: Cxt -> Doc
+pprCxt [] = empty
+pprCxt [t] = pprTyp t <+> text "=>"
+pprCxt ts = parens (hsep $ punctuate comma $ map pprTyp ts) <+> text "=>"
+
+------------------------------
+pprDotDot :: DotDot Exp -> Doc
+pprDotDot = brackets . pprDotDotI
+
+pprDotDotI :: DotDot Exp -> Doc
+pprDotDotI (From e) = pprExp e <> text ".."
+pprDotDotI (FromThen e1 e2) = pprExp e1 <> text ","
+                           <> pprExp e2 <> text ".."
+pprDotDotI (FromTo e1 e2) = pprExp e1 <> text ".." <> pprExp e2
+pprDotDotI (FromThenTo e1 e2 e3) = pprExp e1 <> text ","
+                                <> pprExp e2 <> text ".."
+                                <> pprExp e3
+
+------------------------------
+where_clause :: [Dec] -> Doc
+where_clause [] = empty
+where_clause ds = text "where" <+> vcat (map pprDec ds)
+
+showtextl :: Show a => a -> Doc
+showtextl = text . map toLower . show
