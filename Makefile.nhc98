@@ -21,14 +21,4 @@ Language/Haskell/Parser.hs: Language/Haskell/Parser.ly
 # Here are any extra dependencies.
 
 # C-files dependencies.
-Language/Haskell/Lexer.$C:	Language/Haskell/ParseMonad.$C
-Language/Haskell/ParseMonad.$C:	Language/Haskell/Syntax.$C
-Language/Haskell/ParseUtils.$C:	Language/Haskell/Syntax.$C
-Language/Haskell/ParseUtils.$C:	Language/Haskell/ParseMonad.$C
-Language/Haskell/ParseUtils.$C:	Language/Haskell/Pretty.$C
-Language/Haskell/Parser.$C:	Language/Haskell/ParseMonad.$C
-Language/Haskell/Parser.$C:	Language/Haskell/ParseUtils.$C
-Language/Haskell/Parser.$C:	Language/Haskell/Syntax.$C
-Language/Haskell/Parser.$C:	Language/Haskell/Lexer.$C
-Language/Haskell/Pretty.$C:	Language/Haskell/Syntax.$C
 
