@@ -63,7 +63,6 @@ instance Lift Char where
   lift = return . Lit . Char
 
 instance Lift a => Lift [a] where
-  {-# SPECIALISE instance Lift [Char] #-}
   lift xs = listExp (map lift xs)
 
 -- TH has a special form for literal strings,
