@@ -15,8 +15,10 @@
 module Language.Haskell.Pretty (
 		-- * Pretty printing
 		Pretty,
-		prettyPrintWithMode, prettyPrint,
-		-- * Pretty-printing modes
+		prettyPrintStyleMode, prettyPrintWithMode, prettyPrint,
+		-- * Pretty-printing styles (from @Text.PrettyPrint.HughesPJ@)
+		P.Style(..), P.style, P.Mode(..),
+		-- * Haskell formatting modes
 		PPHsMode(..), PPLayout(..), defaultMode) where
 
 import Language.Haskell.Syntax
@@ -216,19 +218,27 @@ punctuate p (d:ds) = go d ds
                      go d [] = [d]
                      go d (e:es) = (d <> p) : go e es
 
+-- | render the document with a given style and mode.
+renderStyleMode :: P.Style -> PPHsMode -> Doc -> String
+renderStyleMode ppStyle ppMode d = P.renderStyle ppStyle . unDocM d $ ppMode
+
 -- | render the document with a given mode.
 renderWithMode :: PPHsMode -> Doc -> String
-renderWithMode ppMode d = P.render . unDocM d $ ppMode
+renderWithMode = renderStyleMode P.style
 
 -- | render the document with 'defaultMode'.
 render :: Doc -> String
 render = renderWithMode defaultMode
 
--- | pretty-print with a given mode.
-prettyPrintWithMode :: Pretty a => PPHsMode -> a -> String
-prettyPrintWithMode ppMode = renderWithMode ppMode . pretty
+-- | pretty-print with a given style and mode.
+prettyPrintStyleMode :: Pretty a => P.Style -> PPHsMode -> a -> String
+prettyPrintStyleMode ppStyle ppMode = renderStyleMode ppStyle ppMode . pretty
 
--- | pretty-print with 'defaultMode'.
+-- | pretty-print with the default style and a given mode.
+prettyPrintWithMode :: Pretty a => PPHsMode -> a -> String
+prettyPrintWithMode = prettyPrintStyleMode P.style
+
+-- | pretty-print with the default style and 'defaultMode'.
 prettyPrint :: Pretty a => a -> String
 prettyPrint = prettyPrintWithMode defaultMode
 
