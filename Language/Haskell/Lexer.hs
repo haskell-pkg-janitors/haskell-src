@@ -167,7 +167,7 @@ lexer cont input (SrcLoc _ x) y col =
   where
    	-- move past whitespace and comments
         tab y x bol [] =
-		cont EOF [] (SrcLoc y x) col y
+		cont EOF [] (SrcLoc y x) y x
         tab y x bol ('\t':s) =
         	tab y (nextTab x) bol s
         tab y x bol ('\n':s) =
