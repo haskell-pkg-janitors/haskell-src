@@ -605,7 +605,6 @@ Case alternatives
 
 > alts :: { [HsAlt] }
 >	: optsemis alts1 optsemis	{ reverse $2 }
->	| optsemis			{ [] }
 
 > alts1 :: { [HsAlt] }
 >	: alts1 semis alt		{ $3 : $1 }
