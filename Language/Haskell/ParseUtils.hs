@@ -156,7 +156,7 @@ checkExpr e = case e of
 	HsInfixApp e1 op e2	  -> check2Exprs e1 e2 (flip HsInfixApp op)
 	HsApp e1 e2		  -> check2Exprs e1 e2 HsApp
 	HsNegApp e		  -> check1Expr e HsNegApp
-	HsLambda ps e		  -> check1Expr e (HsLambda ps)
+	HsLambda loc ps e	  -> check1Expr e (HsLambda loc ps)
 	HsLet bs e		  -> check1Expr e (HsLet bs)
 	HsIf e1 e2 e3		  -> check3Exprs e1 e2 e3 HsIf
 	HsCase e alts		  -> do
@@ -225,9 +225,9 @@ checkGAlts (HsGuardedAlts galts) = do
 
 checkGAlt (HsGuardedAlt loc e1 e2) = check2Exprs e1 e2 (HsGuardedAlt loc)
 
-checkStmt (HsGenerator p e) = check1Expr e (HsGenerator p)
-checkStmt (HsQualifier e)   = check1Expr e HsQualifier
-checkStmt s@(HsLetStmt _)   = return s
+checkStmt (HsGenerator loc p e) = check1Expr e (HsGenerator loc p)
+checkStmt (HsQualifier e) = check1Expr e HsQualifier
+checkStmt s@(HsLetStmt _) = return s
 
 checkField (HsFieldUpdate n e) = check1Expr e (HsFieldUpdate n)
 

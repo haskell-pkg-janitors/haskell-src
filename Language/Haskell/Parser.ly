@@ -498,7 +498,7 @@ the exp0 productions to distinguish these from the others (exp0a).
 >	| exp10b			{ $1 }
 
 > exp10a :: { HsExp }
->	: '\\' apats '->' exp		{ HsLambda (reverse $2) $4 }
+>	: '\\' srcloc apats '->' exp	{ HsLambda $2 (reverse $3) $5 }
 >  	| 'let' decllist 'in' exp	{ HsLet $2 $4 }
 >	| 'if' exp 'then' exp 'else' exp { HsIf $2 $4 $6 }
 
@@ -590,7 +590,7 @@ List comprehensions
 >	| qual				{ [$1] }
 
 > qual  :: { HsStmt }
->	: pat '<-' exp			{ HsGenerator $1 $3 }
+>	: pat srcloc '<-' exp		{ HsGenerator $2 $1 $4 }
 >	| exp				{ HsQualifier $1 }
 >  	| 'let' decllist		{ HsLetStmt $2 }
 
@@ -639,7 +639,7 @@ an expression.
 
 > stmts :: { [HsStmt] }
 >	: 'let' decllist ';' stmts	{ HsLetStmt $2 : $4 }
->	| pat '<-' exp ';' stmts	{ HsGenerator $1 $3 : $5 }
+>	| pat srcloc '<-' exp ';' stmts	{ HsGenerator $2 $1 $4 : $6 }
 >	| exp ';' stmts			{ HsQualifier $1 : $3 }
 >	| ';' stmts			{ $2 }
 >	| exp ';'			{ [HsQualifier $1] }

@@ -239,7 +239,7 @@ data HsExp
 	| HsInfixApp HsExp HsQOp HsExp
 	| HsApp HsExp HsExp
 	| HsNegApp HsExp
-	| HsLambda [HsPat] HsExp
+	| HsLambda SrcLoc [HsPat] HsExp
 	| HsLet [HsDecl] HsExp
 	| HsIf HsExp HsExp HsExp
 	| HsCase HsExp [HsAlt]
@@ -286,7 +286,7 @@ data HsPatField
 -- | This type represents both /stmt/ in a @do@-expression,
 --   and /qual/ in a list comprehension.
 data HsStmt
-	= HsGenerator HsPat HsExp
+	= HsGenerator SrcLoc HsPat HsExp
 	| HsQualifier HsExp
 	| HsLetStmt [HsDecl]
  deriving (Eq,Show)

@@ -463,7 +463,7 @@ instance Pretty HsExp where
 	pretty (HsInfixApp a op b) = myFsep [pretty a, pretty op, pretty b]
 	pretty (HsNegApp e) = myFsep [char '-', pretty e]
 	pretty (HsApp a b) = myFsep [pretty a, pretty b]
-	pretty (HsLambda expList body) = myFsep $
+	pretty (HsLambda _loc expList body) = myFsep $
 		char '\\' : map pretty expList ++ [text "->", pretty body]
 	-- keywords
 	pretty (HsLet expList letBody) =
@@ -558,7 +558,7 @@ instance Pretty HsGuardedAlt where
 
 ------------------------- Statements in monads & list comprehensions -----
 instance Pretty HsStmt where
-	pretty (HsGenerator exp from) =
+	pretty (HsGenerator _loc exp from) =
 		pretty exp <+> text "<-" <+> pretty from
 	pretty (HsQualifier exp) = pretty exp
 	pretty (HsLetStmt declList) =
