@@ -20,7 +20,7 @@ module Language.Haskell.ParseMonad(
 		runParserWithMode, runParser,
 		getSrcLoc, pushCurrentContext, popContext,
 		-- * Lexing
-		Lex, runL, getInput, discard, lexNewline, lexTab, lexWhile,
+		Lex(runL), getInput, discard, lexNewline, lexTab, lexWhile,
 		alternative, checkBOL, setBOL, startToken, getOffside,
 		pushContextL, popContextL
 	) where
