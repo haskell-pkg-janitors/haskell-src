@@ -83,8 +83,12 @@ data Pat
   deriving( Show )
 
 
-type Match p e d  = ( p ,RightHandSide e,[d])   -- case e of { pat -> body where decs } 
-type Clause p e d = ([p],RightHandSide e,[d])   -- f { p1 p2 = body where decs }
+data Match p e d  = Mat p (RightHandSide e) [d]
+                                    -- case e of { pat -> body where decs } 
+    deriving Show
+data Clause p e d = Clause [p] (RightHandSide e) [d]
+                                    -- f { p1 p2 = body where decs }
+    deriving Show
  
 data Exp 
   = Var String                           -- { x }
@@ -247,10 +251,10 @@ guarded gs = do { gs1 <- mapM f gs; return (Guarded gs1) }
 -- 	Match and Clause
 
 match :: Patt -> Rihs -> [Decl] -> Mtch
-match p rhs ds = do { rhs' <- rhs; ds' <- sequence ds; return (p, rhs', ds') }
+match p rhs ds = do { r' <- rhs; ds' <- sequence ds; return (Mat p r' ds') }
 
 clause :: [Patt] -> Rihs -> [Decl] -> Clse
-clause ps r ds = do { r' <- r; ds' <- sequence ds; return (ps, r', ds') }
+clause ps r ds = do { r' <- r; ds' <- sequence ds; return (Clause ps r' ds') }
 
 
 ---------------------------------------------------------------------------
@@ -439,7 +443,8 @@ apps :: [Expr] -> Expr
 apps [x] = x
 apps (x:y:zs) = apps ( (app x y) : zs )
 
-simpleM p e = (p,Normal e,[])    
+simpleM :: Pat -> Exp -> Mat
+simpleM p e = Mat p (Normal e) []
 
 
 --------------------------------------------------------------
@@ -520,8 +525,8 @@ pprStatement (ParSt sss) = sep $ punctuate (text "|")
 
 ------------------------------
 pprMatch :: Match Pat Exp Dec -> Doc
-pprMatch (p, rhs, ds) = pprPat p <+> pprRhs False rhs
-                     $$ where_clause ds
+pprMatch (Mat p rhs ds) = pprPat p <+> pprRhs False rhs
+                       $$ where_clause ds
 
 ------------------------------
 pprRhs :: Bool -> RightHandSide Exp -> Doc
@@ -584,8 +589,8 @@ pprForeign (Import callconv safety impent as typ) = text "foreign import"
 
 ------------------------------
 pprClause :: Clause Pat Exp Dec -> Doc
-pprClause (ps, rhs, ds) = hsep (map pprPat ps) <+> pprRhs True rhs
-                       $$ where_clause ds
+pprClause (Clause ps rhs ds) = hsep (map pprPat ps) <+> pprRhs True rhs
+                            $$ where_clause ds
 
 ------------------------------
 pprCon :: Con -> Doc
