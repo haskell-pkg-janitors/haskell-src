@@ -16,7 +16,9 @@
 module Language.Haskell.ParseMonad(
 		-- * Parsing
 		P, ParseResult(..), LexContext(..),
-		runParser, getSrcLoc, pushCurrentContext, popContext,
+		ParseMode(..), defaultParseMode,
+		runParserWithMode, runParser,
+		getSrcLoc, pushCurrentContext, popContext,
 		-- * Lexing
 		Lex, runL, getInput, discard, lexNewline, lexTab, lexWhile,
 		alternative, checkBOL, setBOL, startToken, getOffside,
@@ -42,6 +44,19 @@ data LexContext = NoLayout | Layout Int
 
 type ParseState = [LexContext]
 
+-- | Static parameters governing a parse.
+-- More to come later, e.g. literate mode, language extensions.
+
+data ParseMode = ParseMode {
+				-- | original name of the file being parsed
+		parseFilename :: String
+		}
+
+defaultParseMode :: ParseMode
+defaultParseMode = ParseMode {
+		parseFilename = "<unknown>"
+		}
+
 -- | Monad for parsing
 
 newtype P a = P { runP ::
@@ -50,37 +65,46 @@ newtype P a = P { runP ::
 		     -> Int		-- current line
 		     -> SrcLoc		-- location of last token read
 		     -> ParseState	-- layout info.
+		     -> ParseMode	-- parse parameters
 		     -> ParseStatus a
 		}
 
-runParser :: P a -> String -> ParseResult a
-runParser (P m) s = case m s 0 1 (SrcLoc 1 1) [] of
+runParserWithMode :: ParseMode -> P a -> String -> ParseResult a
+runParserWithMode mode (P m) s = case m s 0 1 start [] mode of
 	Ok _ a -> ParseOk a
 	Failed loc s -> ParseFailed loc s
+    where start = SrcLoc {
+		srcFilename = parseFilename mode,
+		srcLine = 1,
+		srcColumn = 1
+	}
+
+runParser :: P a -> String -> ParseResult a
+runParser = runParserWithMode defaultParseMode
 
 instance Monad P where
-	return a = P $ \_i _x _y _l s -> Ok s a
-	P m >>= k = P $ \i x y l s ->
-		case m i x y l s of
+	return a = P $ \_i _x _y _l s _m -> Ok s a
+	P m >>= k = P $ \i x y l s mode ->
+		case m i x y l s mode of
 		    Failed loc s -> Failed loc s
-		    Ok s' a -> runP (k a) i x y l s'
-	fail s = P $ \_r _col _line loc _stk -> Failed loc s
+		    Ok s' a -> runP (k a) i x y l s' mode
+	fail s = P $ \_r _col _line loc _stk _m -> Failed loc s
 
 getSrcLoc :: P SrcLoc
-getSrcLoc = P $ \_i _x _y l s -> Ok s l
+getSrcLoc = P $ \_i _x _y l s _m -> Ok s l
 
 pushCurrentContext :: P ()
 pushCurrentContext = do
-	SrcLoc _ c <- getSrcLoc
-	pushContext (Layout c)
+	loc <- getSrcLoc
+	pushContext (Layout (srcColumn loc))
 
 pushContext :: LexContext -> P ()
 pushContext ctxt =
 --trace ("pushing lexical scope: " ++ show ctxt ++"\n") $
-	P $ \_i _x _y _l s -> Ok (ctxt:s) ()
+	P $ \_i _x _y _l s _m -> Ok (ctxt:s) ()
 
 popContext :: P ()
-popContext = P $ \_i _x _y _l stk ->
+popContext = P $ \_i _x _y _l stk _m ->
       case stk of
    	(_:s) -> --trace ("popping lexical scope, context now "++show s ++ "\n") $
             Ok s ()
@@ -136,7 +160,7 @@ alternative (Lex v) = Lex $ \cont -> P $ \r x y ->
 	runP (cont (Lex $ \cont' -> P $ \_r _x _y ->
 		runP (v cont') r x y)) r x y
 
--- The source location (SrcLoc y x) is the coordinates of the previous token,
+-- The source location is the coordinates of the previous token,
 -- or, while scanning a token, the start of the current token.
 
 -- col is the current column in the source file.
@@ -152,8 +176,8 @@ alternative (Lex v) = Lex $ \cont -> P $ \r x y ->
 -- Thus when col is zero, the true column can be taken from the loc.
 
 checkBOL :: Lex a Bool
-checkBOL = Lex $ \cont -> P $ \r x y loc@(SrcLoc _y x') ->
-		if x == 0 then runP (cont True) r x' y loc
+checkBOL = Lex $ \cont -> P $ \r x y loc ->
+		if x == 0 then runP (cont True) r (srcColumn loc) y loc
 			else runP (cont False) r x y loc
 
 setBOL :: Lex a ()
@@ -162,7 +186,13 @@ setBOL = Lex $ \cont -> P $ \r _ -> runP (cont ()) r 0
 -- Set the loc to the current position
 
 startToken :: Lex a ()
-startToken = Lex $ \cont -> P $ \s x y _ -> runP (cont ()) s x y (SrcLoc y x)
+startToken = Lex $ \cont -> P $ \s x y _ stk mode ->
+	let loc = SrcLoc {
+		srcFilename = parseFilename mode,
+		srcLine = y,
+		srcColumn = x
+	} in
+	runP (cont ()) s x y loc stk mode
 
 -- Current status with respect to the offside (layout) rule:
 -- LT: we are to the left of the current indent (if any)

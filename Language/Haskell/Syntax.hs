@@ -55,8 +55,12 @@ module Language.Haskell.Syntax (
     SrcLoc(..),
   ) where
 
--- | A (line, column) pair indicating a position in the source
-data SrcLoc = SrcLoc Int Int
+-- | A position in the source.
+data SrcLoc = SrcLoc {
+		srcFilename :: String,
+		srcLine :: Int,
+		srcColumn :: Int
+		}
   deriving (Eq,Ord,Show)
 
 newtype Module = Module String

@@ -13,7 +13,9 @@
 > --
 > -----------------------------------------------------------------------------
 >
-> module Language.Haskell.Parser (parseModule, ParseResult(..)) where
+> module Language.Haskell.Parser (
+>		parseModule, parseModuleWithMode,
+>		ParseMode(..), defaultParseMode, ParseResult(..)) where
 > 
 > import Language.Haskell.Syntax
 > import Language.Haskell.ParseMonad
@@ -800,4 +802,8 @@ Miscellaneous (mostly renamings)
 > -- | Parse of a string, which should contain a complete Haskell 98 module.
 > parseModule :: String -> ParseResult HsModule
 > parseModule = runParser parse
+
+> -- | Parse of a string, which should contain a complete Haskell 98 module.
+> parseModuleWithMode :: ParseMode -> String -> ParseResult HsModule
+> parseModuleWithMode mode = runParserWithMode mode parse
 > }

@@ -60,8 +60,6 @@ data PPHsMode = PPHsMode {
 		layout :: PPLayout,
 				-- | add GHC-style @LINE@ pragmas to output?
 		linePragmas :: Bool,
-				-- | name of the original source
-		sourceName :: String,
 				-- | not implemented yet
 		comments :: Bool
 		}
@@ -79,7 +77,6 @@ defaultMode = PPHsMode{
 		      spacing = True,
 		      layout = PPOffsideRule,
 		      linePragmas = False,
-		      sourceName = "",
 		      comments = True
 		      }
 
@@ -698,9 +695,10 @@ layoutChoice a b dl = do e <- getPPEnv
 -- the line we're talking about, we need to compensate by adding 1.
 
 markLine :: SrcLoc -> Doc -> Doc
-markLine (SrcLoc y _) doc = do
+markLine loc doc = do
 	e <- getPPEnv
+	let y = srcLine loc
 	let line l =
-	      text ("{-# LINE " ++ show l ++ " \"" ++ sourceName e ++ "\" #-}")
+	      text ("{-# LINE " ++ show l ++ " \"" ++ srcFilename loc ++ "\" #-}")
 	if linePragmas e then layoutChoice (line y $$) (line (y+1) <+>) doc
 	      else doc
