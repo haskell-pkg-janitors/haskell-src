@@ -34,7 +34,7 @@ import Language.Haskell.Syntax
 import Language.Haskell.ParseMonad
 
 splitTyConApp :: HsType -> P (HsName,[HsType])
-splitTyConApp t = split t []
+splitTyConApp t0 = split t0 []
  where
 	split :: HsType -> [HsType] -> P (HsName,[HsType])
 	split (HsTyApp t u) ts = split t (u:ts)
@@ -210,25 +210,31 @@ check3Exprs e1 e2 e3 f = do
 	e3 <- checkExpr e3
 	return (f e1 e2 e3)
 
+checkManyExprs :: [HsExp] -> ([HsExp] -> a) -> P a
 checkManyExprs es f = do
 	es <- mapM checkExpr es
 	return (f es)
 
+checkAlt :: HsAlt -> P HsAlt
 checkAlt (HsAlt loc p galts bs) = do
 	galts <- checkGAlts galts
 	return (HsAlt loc p galts bs)
 
+checkGAlts :: HsGuardedAlts -> P HsGuardedAlts
 checkGAlts (HsUnGuardedAlt e) = check1Expr e HsUnGuardedAlt
 checkGAlts (HsGuardedAlts galts) = do
 	galts <- mapM checkGAlt galts
 	return (HsGuardedAlts galts)
 
+checkGAlt :: HsGuardedAlt -> P HsGuardedAlt
 checkGAlt (HsGuardedAlt loc e1 e2) = check2Exprs e1 e2 (HsGuardedAlt loc)
 
+checkStmt :: HsStmt -> P HsStmt
 checkStmt (HsGenerator loc p e) = check1Expr e (HsGenerator loc p)
 checkStmt (HsQualifier e) = check1Expr e HsQualifier
 checkStmt s@(HsLetStmt _) = return s
 
+checkField :: HsFieldUpdate -> P HsFieldUpdate
 checkField (HsFieldUpdate n e) = check1Expr e (HsFieldUpdate n)
 
 -----------------------------------------------------------------------------
@@ -246,6 +252,7 @@ checkValDef srcloc lhs rhs whereBinds =
 
 -- A variable binding is parsed as an HsPatBind.
 
+isFunLhs :: HsExp -> [HsExp] -> Maybe (HsName, [HsExp])
 isFunLhs (HsInfixApp l (HsQVarOp (UnQual op)) r) es = Just (op, l:r:es)
 isFunLhs (HsApp (HsVar (UnQual f)) e) es = Just (f, e:es)
 isFunLhs (HsApp (HsParen f) e) es = isFunLhs f (e:es)
@@ -284,7 +291,7 @@ checkPrec i | otherwise	       = fail ("Illegal precedence " ++ show i)
 
 mkRecConstrOrUpdate :: HsExp -> [HsFieldUpdate] -> P HsExp
 mkRecConstrOrUpdate (HsCon c) fs       = return (HsRecConstr c fs)
-mkRecConstrOrUpdate exp       fs@(_:_) = return (HsRecUpdate exp fs)
+mkRecConstrOrUpdate e         fs@(_:_) = return (HsRecUpdate e fs)
 mkRecConstrOrUpdate _         _        = fail "Empty record update"
 
 -----------------------------------------------------------------------------
@@ -294,9 +301,9 @@ mkRecConstrOrUpdate _         _        = fail "Empty record update"
 checkRevDecls :: [HsDecl] -> P [HsDecl]
 checkRevDecls = mergeFunBinds []
     where
-	mergeFunBinds ds' [] = return ds'
-	mergeFunBinds ds' (HsFunBind ms@(HsMatch _ name ps _ _:_):ds) =
-		mergeMatches ms ds
+	mergeFunBinds revDs [] = return revDs
+	mergeFunBinds revDs (HsFunBind ms1@(HsMatch _ name ps _ _:_):ds1) =
+		mergeMatches ms1 ds1
 	    where
 		arity = length ps
 		mergeMatches ms' (HsFunBind ms@(HsMatch loc name' ps' _ _:_):ds)
@@ -305,5 +312,5 @@ checkRevDecls = mergeFunBinds []
 			then fail ("arity mismatch for '" ++ show name ++ "'")
 			     `atSrcLoc` loc
 			else mergeMatches (ms++ms') ds
-		mergeMatches ms' ds = mergeFunBinds (HsFunBind ms':ds') ds
-	mergeFunBinds ds' (d:ds) = mergeFunBinds (d:ds') ds
+		mergeMatches ms' ds = mergeFunBinds (HsFunBind ms':revDs) ds
+	mergeFunBinds revDs (d:ds) = mergeFunBinds (d:revDs) ds

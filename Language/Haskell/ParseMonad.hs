@@ -75,7 +75,7 @@ newtype P a = P { runP ::
 runParserWithMode :: ParseMode -> P a -> String -> ParseResult a
 runParserWithMode mode (P m) s = case m s 0 1 start [] mode of
 	Ok _ a -> ParseOk a
-	Failed loc s -> ParseFailed loc s
+	Failed loc msg -> ParseFailed loc msg
     where start = SrcLoc {
 		srcFilename = parseFilename mode,
 		srcLine = 1,
@@ -89,7 +89,7 @@ instance Monad P where
 	return a = P $ \_i _x _y _l s _m -> Ok s a
 	P m >>= k = P $ \i x y l s mode ->
 		case m i x y l s mode of
-		    Failed loc s -> Failed loc s
+		    Failed loc msg -> Failed loc msg
 		    Ok s' a -> runP (k a) i x y l s' mode
 	fail s = P $ \_r _col _line loc _stk _m -> Failed loc s
 
@@ -147,9 +147,11 @@ lexNewline = Lex $ \cont -> P $ \(_:r) _x y -> runP (cont ()) r 1 (y+1)
 lexTab :: Lex a ()
 lexTab = Lex $ \cont -> P $ \(_:r) x -> runP (cont ()) r (nextTab x)
 
+nextTab :: Int -> Int
 nextTab x = x + (tAB_LENGTH - (x-1) `mod` tAB_LENGTH)
 
-tAB_LENGTH = 8 :: Int
+tAB_LENGTH :: Int
+tAB_LENGTH = 8
 
 -- Consume and return the largest string of characters satisfying p
 

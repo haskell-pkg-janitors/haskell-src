@@ -98,9 +98,16 @@ instance Monad (DocM s) where
 {-# INLINE retDocM #-}
 {-# INLINE unDocM #-}
 {-# INLINE getPPEnv #-}
+
+thenDocM :: DocM s a -> (a -> DocM s b) -> DocM s b
 thenDocM m k = DocM $ (\s -> case unDocM m $ s of a -> unDocM (k a) $ s)
-then_DocM m k = DocM $ (\s ->case unDocM m $ s of a ->  unDocM k $ s)
-retDocM a = DocM (\s -> a)
+
+then_DocM :: DocM s a -> DocM s b -> DocM s b
+then_DocM m k = DocM $ (\s -> case unDocM m $ s of _ -> unDocM k $ s)
+
+retDocM :: a -> DocM s a
+retDocM a = DocM (\_s -> a)
+
 unDocM :: DocM s a -> (s -> a)
 unDocM (DocM f) = f
 
@@ -212,8 +219,8 @@ hang dM i rM = do{d<-dM;r<-rM;return $ P.hang d i r}
 
 -- Yuk, had to cut-n-paste this one from Pretty.hs
 punctuate :: Doc -> [Doc] -> [Doc]
-punctuate p []     = []
-punctuate p (d:ds) = go d ds
+punctuate _ []     = []
+punctuate p (d1:ds) = go d1 ds
                    where
                      go d [] = [d]
                      go d (e:es) = (d <> p) : go e es
@@ -254,16 +261,16 @@ fullRender = fullRenderWithMode defaultMode
 
 -------------------------  Pretty-Print a Module --------------------
 instance Pretty HsModule where
-	pretty (HsModule pos mod mbExports imp decls) =
+	pretty (HsModule pos m mbExports imp decls) =
 		markLine pos $
-		topLevel (ppHsModuleHeader mod mbExports)
+		topLevel (ppHsModuleHeader m mbExports)
 			 (map pretty imp ++ map pretty decls)
 
 --------------------------  Module Header ------------------------------
 ppHsModuleHeader :: Module -> Maybe [HsExportSpec] ->  Doc
-ppHsModuleHeader mod mbExportList = mySep [
+ppHsModuleHeader m mbExportList = mySep [
 	text "module",
-	pretty mod,
+	pretty m,
 	maybePP (parenList . map pretty) mbExportList,
 	text "where"]
 
@@ -276,15 +283,15 @@ instance Pretty HsExportSpec where
 	pretty (HsEThingAll name)	    = pretty name <> text "(..)"
 	pretty (HsEThingWith name nameList) =
 		pretty name <> (parenList . map pretty $ nameList)
-	pretty (HsEModuleContents mod)      = text "module" <+> pretty mod
+	pretty (HsEModuleContents m)       = text "module" <+> pretty m
 
 instance Pretty HsImportDecl where
-	pretty (HsImportDecl pos mod qual mbName mbSpecs) =
+	pretty (HsImportDecl pos m qual mbName mbSpecs) =
 		markLine pos $
 		mySep [text "import",
 		       if qual then text "qualified" else empty,
-		       pretty mod,
-		       maybePP (\m -> text "as" <+> pretty m) mbName,
+		       pretty m,
+		       maybePP (\m' -> text "as" <+> pretty m') mbName,
 		       maybePP exports mbSpecs]
 	    where
 		exports (b,specList) =
@@ -335,7 +342,7 @@ instance Pretty HsDecl where
 		markLine pos $
 		mySep ( [text "class", ppHsContext context, pretty name]
 			++ map pretty nameList ++ [text "where"])
-		$$$ body classIndent (map pretty declList)
+		$$$ ppBody classIndent (map pretty declList)
 
 	-- m{spacing=False}
 	-- special case for empty instance declaration
@@ -349,7 +356,7 @@ instance Pretty HsDecl where
 		markLine pos $
 		mySep ( [text "instance", ppHsContext context, pretty name]
 			++ map ppHsTypeArg args ++ [text "where"])
-		$$$ body classIndent (map pretty declList)
+		$$$ ppBody classIndent (map pretty declList)
 
 	pretty (HsDefaultDecl pos htypes) =
 		blankline $
@@ -393,8 +400,9 @@ instance Pretty HsMatch where
 				else parens (myFsep hd) : map (prettyPrec 2) ps'
 			_ -> pretty f : map (prettyPrec 2) ps
 
+ppWhere :: [HsDecl] -> Doc
 ppWhere [] = empty
-ppWhere l = nest 2 (text "where" $$$ body whereIndent (map pretty l))
+ppWhere l = nest 2 (text "where" $$$ ppBody whereIndent (map pretty l))
 
 ------------------------- Data & Newtype Bodies -------------------------
 instance Pretty HsConDecl where
@@ -446,7 +454,7 @@ instance Pretty HsType where
 
 ------------------------- Expressions -------------------------
 instance Pretty HsRhs where
-	pretty (HsUnGuardedRhs exp) = equals <+> pretty exp
+	pretty (HsUnGuardedRhs e) = equals <+> pretty e
 	pretty (HsGuardedRhss guardList) = myVcat . map pretty $ guardList
 
 instance Pretty HsGuardedRhs where
@@ -475,7 +483,7 @@ instance Pretty HsExp where
 		char '\\' : map pretty expList ++ [text "->", pretty body]
 	-- keywords
 	pretty (HsLet expList letBody) =
-		myFsep [text "let" <+> body letIndent (map pretty expList),
+		myFsep [text "let" <+> ppBody letIndent (map pretty expList),
 			text "in", pretty letBody]
 	pretty (HsIf cond thenexp elsexp) =
 		myFsep [text "if", pretty cond,
@@ -483,33 +491,33 @@ instance Pretty HsExp where
 			text "else", pretty elsexp]
 	pretty (HsCase cond altList) =
 		myFsep [text "case", pretty cond, text "of"]
-		$$$ body caseIndent (map pretty altList)
+		$$$ ppBody caseIndent (map pretty altList)
 	pretty (HsDo stmtList) =
-		text "do" $$$ body doIndent (map pretty stmtList)
+		text "do" $$$ ppBody doIndent (map pretty stmtList)
 	-- Constructors & Vars
 	pretty (HsVar name) = pretty name
 	pretty (HsCon name) = pretty name
 	pretty (HsTuple expList) = parenList . map pretty $ expList
 	-- weird stuff
-	pretty (HsParen exp) = parens . pretty $ exp
-	pretty (HsLeftSection exp op) = parens (pretty exp <+> pretty op)
-	pretty (HsRightSection op exp) = parens (pretty op <+> pretty exp)
+	pretty (HsParen e) = parens . pretty $ e
+	pretty (HsLeftSection e op) = parens (pretty e <+> pretty op)
+	pretty (HsRightSection op e) = parens (pretty op <+> pretty e)
 	pretty (HsRecConstr c fieldList) =
 		pretty c <> (braceList . map pretty $ fieldList)
-	pretty (HsRecUpdate exp fieldList) =
-		pretty exp <> (braceList . map pretty $ fieldList)
+	pretty (HsRecUpdate e fieldList) =
+		pretty e <> (braceList . map pretty $ fieldList)
 	-- patterns
 	-- special case that would otherwise be buggy
-	pretty (HsAsPat name (HsIrrPat exp)) =
-		myFsep [pretty name <> char '@', char '~' <> pretty exp]
-	pretty (HsAsPat name exp) = hcat [pretty name, char '@', pretty exp]
+	pretty (HsAsPat name (HsIrrPat e)) =
+		myFsep [pretty name <> char '@', char '~' <> pretty e]
+	pretty (HsAsPat name e) = hcat [pretty name, char '@', pretty e]
 	pretty HsWildCard = char '_'
-	pretty (HsIrrPat exp) = char '~' <> pretty exp
+	pretty (HsIrrPat e) = char '~' <> pretty e
 	-- Lists
 	pretty (HsList list) =
 		bracketList . punctuate comma . map pretty $ list
-	pretty (HsEnumFrom exp) =
-		bracketList [pretty exp, text ".."]
+	pretty (HsEnumFrom e) =
+		bracketList [pretty e, text ".."]
 	pretty (HsEnumFromTo from to) =
 		bracketList [pretty from, text "..", pretty to]
 	pretty (HsEnumFromThen from thenE) =
@@ -517,11 +525,11 @@ instance Pretty HsExp where
 	pretty (HsEnumFromThenTo from thenE to) =
 		bracketList [pretty from <> comma, pretty thenE,
 			     text "..", pretty to]
-	pretty (HsListComp exp stmtList) =
-		bracketList ([pretty exp, char '|']
+	pretty (HsListComp e stmtList) =
+		bracketList ([pretty e, char '|']
 			     ++ (punctuate comma . map pretty $ stmtList))
-	pretty (HsExpTypeSig _pos exp ty) =
-		myFsep [pretty exp, text "::", pretty ty]
+	pretty (HsExpTypeSig _pos e ty) =
+		myFsep [pretty e, text "::", pretty ty]
 
 ------------------------- Patterns -----------------------------
 
@@ -553,29 +561,29 @@ instance Pretty HsPatField where
 
 ------------------------- Case bodies  -------------------------
 instance Pretty HsAlt where
-	pretty (HsAlt _pos exp gAlts decls) =
-		pretty exp <+> pretty gAlts $$$ ppWhere decls
+	pretty (HsAlt _pos e gAlts decls) =
+		pretty e <+> pretty gAlts $$$ ppWhere decls
 
 instance Pretty HsGuardedAlts where
-	pretty (HsUnGuardedAlt exp) = text "->" <+> pretty exp
+	pretty (HsUnGuardedAlt e) = text "->" <+> pretty e
 	pretty (HsGuardedAlts altList) = myVcat . map pretty $ altList
 
 instance Pretty HsGuardedAlt where
-	pretty (HsGuardedAlt _pos exp body) =
-		myFsep [char '|', pretty exp, text "->", pretty body]
+	pretty (HsGuardedAlt _pos e body) =
+		myFsep [char '|', pretty e, text "->", pretty body]
 
 ------------------------- Statements in monads & list comprehensions -----
 instance Pretty HsStmt where
-	pretty (HsGenerator _loc exp from) =
-		pretty exp <+> text "<-" <+> pretty from
-	pretty (HsQualifier exp) = pretty exp
+	pretty (HsGenerator _loc e from) =
+		pretty e <+> text "<-" <+> pretty from
+	pretty (HsQualifier e) = pretty e
 	pretty (HsLetStmt declList) =
-		text "let" $$$ body letIndent (map pretty declList)
+		text "let" $$$ ppBody letIndent (map pretty declList)
 
 ------------------------- Record updates
 instance Pretty HsFieldUpdate where
-	pretty (HsFieldUpdate name exp) =
-		myFsep [pretty name, equals, pretty exp]
+	pretty (HsFieldUpdate name e) =
+		myFsep [pretty name, equals, pretty e]
 
 ------------------------- Names -------------------------
 instance Pretty HsQOp where
@@ -591,9 +599,9 @@ instance Pretty HsQName where
 	pretty name = parensIf (isSymbolName (getName name)) (ppHsQName name)
 
 ppHsQName :: HsQName -> Doc
-ppHsQName (UnQual name)   = ppHsName name
-ppHsQName (Qual mod name) = pretty mod <> char '.' <> ppHsName name
-ppHsQName (Special sym)   = text (show sym)
+ppHsQName (UnQual name) = ppHsName name
+ppHsQName (Qual m name) = pretty m <> char '.' <> ppHsName name
+ppHsQName (Special sym) = text (show sym)
 
 instance Pretty HsOp where
 	pretty (HsVarOp n) = ppHsNameInfix n
@@ -636,7 +644,7 @@ ppHsAsst (a,ts) = myFsep (ppHsQName a : map ppHsTypeArg ts)
 
 ------------------------- pp utils -------------------------
 maybePP :: (a -> Doc) -> Maybe a -> Doc
-maybePP pp Nothing = empty
+maybePP _ Nothing = empty
 maybePP pp (Just a) = pp a
 
 parenList :: [Doc] -> Doc
@@ -671,8 +679,8 @@ topLevel header dl = do
 	     PPInLine -> header $$ prettyBlock dl
 	     PPNoLayout -> header <+> flatBlock dl
 
-body :: (PPHsMode -> Int) -> [Doc] -> Doc
-body f dl = do
+ppBody :: (PPHsMode -> Int) -> [Doc] -> Doc
+ppBody f dl = do
 	 e <- fmap layout getPPEnv
 	 case e of PPOffsideRule -> indent
 		   PPSemiColon   -> indentExplicit
@@ -709,6 +717,7 @@ myFsep = layoutChoice fsep' hsep
 			let n = onsideIndent e
 			nest n (fsep (nest (-n) d:ds))
 
+layoutChoice :: (a -> Doc) -> (a -> Doc) -> a -> Doc
 layoutChoice a b dl = do e <- getPPEnv
                          if layout e == PPOffsideRule ||
                             layout e == PPSemiColon

@@ -144,6 +144,7 @@ reserved_ids = [
  ( "hiding", 	KW_Hiding )
  ]
 
+isIdent, isSymbol :: Char -> Bool
 isIdent  c = isAlpha c || isDigit c || c == '\'' || c == '_'
 isSymbol c = elem c ":!#$%&*+./<=>?@\\^|-~"
 
@@ -171,7 +172,7 @@ lexWhiteSpace bol = do
 		discard 2
 		bol <- lexNestedComment bol
 		lexWhiteSpace bol
-	    '-':'-':s | all (== '-') (takeWhile isSymbol s) -> do
+	    '-':'-':rest | all (== '-') (takeWhile isSymbol rest) -> do
 		lexWhile (== '-')
 		lexWhile (/= '\n')
 		lexNewline
@@ -243,10 +244,10 @@ lexToken = do
 	    | isUpper c -> lexConIdOrQual ""
 
 	    | isLower c || c == '_' -> do
-		id <- lexWhile isIdent
-		return $ case lookup id reserved_ids of
+		ident <- lexWhile isIdent
+		return $ case lookup ident reserved_ids of
 			Just keyword -> keyword
-			Nothing -> VarId id
+			Nothing -> VarId ident
 
 	    | isSymbol c -> do
 		sym <- lexWhile isSymbol
@@ -276,9 +277,9 @@ lexToken = do
 			    return RightCurly
 
 		    '\'' -> do
-			    c <- lexChar
+			    c2 <- lexChar
 			    matchChar '\'' "Improperly terminated character constant"
-			    return (Character c)
+			    return (Character c2)
 
 		    '"' ->  lexString
 
@@ -335,11 +336,11 @@ lexConIdOrQual qual = do
 	  '.':c:_
 	     | isLower c || c == '_' -> do	-- qualified varid?
 		discard 1
-		id <- lexWhile isIdent
-		case lookup id reserved_ids of
+		ident <- lexWhile isIdent
+		case lookup ident reserved_ids of
 		   -- cannot qualify a reserved word
 		   Just _  -> just_a_conid
-		   Nothing -> return (QVarId (qual', id))
+		   Nothing -> return (QVarId (qual', ident))
 
 	     | isUpper c -> do		-- qualified conid?
 		discard 1
@@ -380,8 +381,8 @@ lexString = loop ""
 				matchChar '\\' "Illegal character in string gap"
 				loop s
 			     | otherwise -> do
-				c <- lexEscape
-				loop (c:s)
+				ce <- lexEscape
+				loop (ce:s)
 		    '"':_ -> do
 				discard 1
 				return (StringTok (reverse s))
