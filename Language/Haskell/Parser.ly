@@ -122,26 +122,26 @@ Module Header
 
 > module :: { HsModule }
 >	: srcloc 'module' modid maybeexports 'where' body
->		{ HsModule $1 $3 $4 (reverse (fst $6)) (reverse (snd $6)) }
+>		{ HsModule $1 $3 $4 (fst $6) (snd $6) }
 >	| srcloc body
->		{ HsModule $1 main_mod Nothing (reverse (fst $2)) (reverse (snd $2)) }
+>		{ HsModule $1 main_mod Nothing (fst $2) (snd $2) }
 
 > body :: { ([HsImportDecl],[HsDecl]) }
->	: '{'  bodyaux '}'				{ $2 }
->	| open bodyaux close				{ $2 }
+>	: '{'  bodyaux '}'			{ $2 }
+>	| open bodyaux close			{ $2 }
 
 > bodyaux :: { ([HsImportDecl],[HsDecl]) }
->	: optsemis impdecls semis topdecls optsemis	{ ($2, $4) }
->	| optsemis                topdecls optsemis	{ ([], $2) }
->	| optsemis impdecls                optsemis	{ ($2, []) }
->	| optsemis					{ ([], []) }
+>	: optsemis impdecls semis topdecls	{ (reverse $2, $4) }
+>	| optsemis                topdecls	{ ([], $2) }
+>	| optsemis impdecls			{ (reverse $2, []) }
+>	| optsemis				{ ([], []) }
 
 > semis :: { () }
->	: optsemis ';'					{ () }
+>	: optsemis ';'				{ () }
 
 > optsemis :: { () }
->	: semis						{ () }
->	| {- empty -}					{ () }
+>	: semis					{ () }
+>	| {- empty -}				{ () }
 
 -----------------------------------------------------------------------------
 The Export List
@@ -247,7 +247,10 @@ Note: The report allows topdecls to be empty. This would result in another
 shift/reduce-conflict, so we don't handle this case here, but in bodyaux.
 
 > topdecls :: { [HsDecl] }
->	: topdecls semis topdecl	{ $3 : $1 }
+>	: topdecls1 optsemis		{% checkRevDecls $1 }
+
+> topdecls1 :: { [HsDecl] }
+>	: topdecls1 semis topdecl	{ $3 : $1 }
 >	| topdecl			{ [$1] }
 
 > topdecl :: { HsDecl }
@@ -273,7 +276,7 @@ shift/reduce-conflict, so we don't handle this case here, but in bodyaux.
 >	| {- empty -}			{ [] }
 
 > decls :: { [HsDecl] }
->	: optsemis decls1 optsemis	{ reverse $2 }
+>	: optsemis decls1 optsemis	{% checkRevDecls $2 }
 >	| optsemis			{ [] }
 
 > decls1 :: { [HsDecl] }
@@ -431,7 +434,7 @@ Instance declarations
 >	| {- empty -}			{ [] }
 
 > valdefs :: { [HsDecl] }
->	: optsemis valdefs1 optsemis	{ reverse $2 }
+>	: optsemis valdefs1 optsemis	{% checkRevDecls $2 }
 >	| optsemis			{ [] }
 
 > valdefs1 :: { [HsDecl] }

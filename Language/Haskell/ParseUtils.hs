@@ -25,6 +25,7 @@ module Language.Haskell.ParseUtils (
 	, checkExpr		-- HsExp -> P HsExp
 	, checkValDef		-- SrcLoc -> HsExp -> HsRhs -> [HsDecl] -> P HsDecl
 	, checkUnQual		-- HsQName -> P HsName
+	, checkRevDecls		-- [HsDecl] -> P [HsDecl]
  ) where
 
 import Language.Haskell.Syntax
@@ -249,3 +250,23 @@ mkRecConstrOrUpdate :: HsExp -> [HsFieldUpdate] -> P HsExp
 mkRecConstrOrUpdate (HsCon c) fs       = return (HsRecConstr c fs)
 mkRecConstrOrUpdate exp       fs@(_:_) = return (HsRecUpdate exp fs)
 mkRecConstrOrUpdate _         _        = fail "Empty record update"
+
+-----------------------------------------------------------------------------
+-- Reverse a list of declarations, merging adjacent HsFunBinds of the
+-- same name and checking that their arities match.
+
+checkRevDecls :: [HsDecl] -> P [HsDecl]
+checkRevDecls = mergeFunBinds []
+    where
+	mergeFunBinds ds' [] = return ds'
+	mergeFunBinds ds' (HsFunBind ms@(HsMatch _ name ps _ _:_):ds) =
+		mergeMatches ms ds
+	    where
+		arity = length ps
+		mergeMatches ms' (HsFunBind ms@(HsMatch _ name' ps' _ _:_):ds)
+		    | name' == name =
+			if length ps' /= arity
+			then fail ("arity mismatch for '" ++ show name ++ "'")
+			else mergeMatches (ms++ms') ds
+		mergeMatches ms' ds = mergeFunBinds (HsFunBind ms':ds') ds
+	mergeFunBinds ds' (d:ds) = mergeFunBinds (d:ds') ds
