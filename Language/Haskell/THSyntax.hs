@@ -118,7 +118,7 @@ data Dec
   deriving( Show )
 
 data Foreign = Import Callconv Safety String String Typ
-             -- | Export ...
+             -- Export missing...
 	     deriving( Show )
 
 data Callconv = CCall | StdCall
