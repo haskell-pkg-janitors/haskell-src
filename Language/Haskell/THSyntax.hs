@@ -503,28 +503,28 @@ appTyp t1 t2 = do
 	       t2' <- t2
 	       return $ AppTyp t1' t2'
 
-arrowTyCon :: TypQ
-arrowTyCon = return $ ConTyp ArrowTag
+arrowTyp :: TypQ
+arrowTyp = return $ ConTyp ArrowTag
 
-listTyCon :: TypQ
-listTyCon = return $ ConTyp ListTag
+listTyp :: TypQ
+listTyp = return $ ConTyp ListTag
 
-tupleTyCon :: Int -> TypQ
-tupleTyCon i = return $ ConTyp (TupleTag i)
+tupleTyp :: Int -> TypQ
+tupleTyp i = return $ ConTyp (TupleTag i)
 
-namedTyCon :: String -> TypQ
-namedTyCon s = return $ ConTyp (ConNameTag s)
+conNameTyp :: String -> TypQ
+conNameTyp s = return $ ConTyp (ConNameTag s)
 
 isStrict, notStrict :: Q Strict
 isStrict = return $ IsStrict
 notStrict = return $ NotStrict
 
-strictTypQ :: Q Strict -> TypQ -> StrictTypQ
-strictTypQ = liftM2 (,)
+strictTyp :: Q Strict -> TypQ -> StrictTypQ
+strictTyp = liftM2 (,)
 
-varStrictTypQ :: String -> StrictTypQ -> VarStrictTypQ
-varStrictTypQ v st = do (s, t) <- st
-                        return (v, s, t)
+varStrictTyp :: String -> StrictTypQ -> VarStrictTypQ
+varStrictTyp v st = do (s, t) <- st
+                       return (v, s, t)
 
 --------------------------------------------------------------
 -- useful helper functions
