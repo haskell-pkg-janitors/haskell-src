@@ -18,5 +18,3 @@ hidden-modules:
 build-depends:	base, haskell98
 		-- The dependency on Haskell 98 is only because
 		-- Happy generates a parser that imports Array
-extensions:	CPP
-		-- Happy-generated parsers contain cpp directives

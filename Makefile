@@ -14,7 +14,6 @@ PACKAGE      = haskell-src
 VERSION = 1.0
 PACKAGE_DEPS = base
 
-SRC_HC_OPTS += -fglasgow-exts -cpp 
 Language/Haskell/Parser_HC_OPTS += -Onot -fno-warn-incomplete-patterns
 
 SRC_HADDOCK_OPTS += -t "Haskell Hierarchical Libraries ($(PACKAGE) package)"
