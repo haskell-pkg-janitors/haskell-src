@@ -133,7 +133,7 @@ Module Header
 > bodyaux :: { ([HsImportDecl],[HsDecl]) }
 >	: optsemis impdecls semis topdecls	{ (reverse $2, $4) }
 >	| optsemis                topdecls	{ ([], $2) }
->	| optsemis impdecls			{ (reverse $2, []) }
+>	| optsemis impdecls optsemis		{ (reverse $2, []) }
 >	| optsemis				{ ([], []) }
 
 > semis :: { () }
