@@ -491,6 +491,9 @@ rename (Ptilde p) = do { (env,p2) <- rename p; return(env,Ptilde p2) }
 rename (Paspat s p) = 
    do { s1 <- gensym s; (env,p2) <- rename p; return((s,s1):env,Paspat s1 p2) }
 rename Pwild = return([],Pwild)
+rename (Prec nm fs) = do { pairs <- mapM rename ps; g(combine pairs) }
+    where g (env,ps') = return (env,Prec nm (zip ss ps'))
+          (ss,ps) = unzip fs
 
 genpat p = do { (env,p2) <- rename p; return(alpha env,p2) }
 
@@ -574,6 +577,12 @@ pprExpI _ (ListExp es) = brackets $ sep $ punctuate comma $ map pprExp es
 	-- 5 :: Int :: Int will break, but that's a silly thing to do anyway
 pprExpI i (SigExp e t)
  = parensIf (i > noPrec) $ pprExp e <+> text "::" <+> pprTyp t
+pprExpI _ (RecCon nm fs) = text nm <> braces (pprFields fs)
+pprExpI _ (RecUpd e fs) = pprExpI appPrec e <> braces (pprFields fs)
+
+pprFields :: [(String,Exp)] -> Doc
+pprFields = sep . punctuate comma
+          . map (\(s,e) -> text s <+> equals <+> pprExp e)
 
 pprMaybeExp :: Precedence -> Maybe Exp -> Doc
 pprMaybeExp _ Nothing = empty
@@ -619,6 +628,10 @@ pprPatI i (Pcon s ps)  = parensIf (i > noPrec) $ text s <+> sep (map (pprPatI ap
 pprPatI i (Ptilde p)   = parensIf (i > noPrec) $ pprPatI appPrec p
 pprPatI i (Paspat v p) = parensIf (i > noPrec) $ text v <> text "@" <> pprPatI appPrec p
 pprPatI _ Pwild = text "_"
+pprPatI _ (Prec nm fs)
+ = parens $     text nm
+            <+> braces (sep $ punctuate comma $
+                        map (\(s,p) -> text s <+> equals <+> pprPat p) fs)
 
 ------------------------------
 pprDec :: Dec -> Doc
