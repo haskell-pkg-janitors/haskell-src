@@ -546,8 +546,8 @@ pprRhs eq (Normal e) = (if eq then text "=" else text "->")
 
 ------------------------------
 pprLit :: Precedence -> Lit -> Doc
-pprLit _ (Integer i) = integer i
-pprLit _ (Char c) = char c
+pprLit i (Integer x) = parensIf (i > noPrec && x < 0) (integer x)
+pprLit _ (Char c) = text (show c)
 pprLit _ (String s) = text (show s)
 pprLit i (Rational rat) = parensIf (i > noPrec) $ text $ show rat
 
