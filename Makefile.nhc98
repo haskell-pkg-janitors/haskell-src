@@ -1,0 +1,41 @@
+THISPKG	= haskell-src
+SEARCH	= -I$(TOPDIR)/targets/$(MACHINE) -package base
+EXTRA_H_FLAGS = +RTS -K4M -RTS
+
+SRCS	= \
+	Language/Haskell/Lexer.hs Language/Haskell/ParseMonad.hs \
+	Language/Haskell/ParseUtils.hs Language/Haskell/Parser.hs \
+	Language/Haskell/Pretty.hs Language/Haskell/Syntax.hs
+
+
+# Here are the main rules.
+include ../Makefile.common
+
+# some extra rules
+Language/Haskell/Parser.hs: Language/Haskell/Parser.ly
+	happy $<
+
+# Here are the dependencies.
+$(OBJDIR)/Language/Haskell/Lexer.$O:	$(OBJDIR)/Language/Haskell/ParseMonad.$O
+$(OBJDIR)/Language/Haskell/ParseMonad.$O: $(OBJDIR)/Language/Haskell/Syntax.$O
+$(OBJDIR)/Language/Haskell/ParseUtils.$O: $(OBJDIR)/Language/Haskell/Syntax.$O
+$(OBJDIR)/Language/Haskell/ParseUtils.$O: $(OBJDIR)/Language/Haskell/ParseMonad.$O
+$(OBJDIR)/Language/Haskell/ParseUtils.$O: $(OBJDIR)/Language/Haskell/Pretty.$O
+$(OBJDIR)/Language/Haskell/Parser.$O:	$(OBJDIR)/Language/Haskell/ParseMonad.$O
+$(OBJDIR)/Language/Haskell/Parser.$O:	$(OBJDIR)/Language/Haskell/ParseUtils.$O
+$(OBJDIR)/Language/Haskell/Parser.$O:	$(OBJDIR)/Language/Haskell/Syntax.$O
+$(OBJDIR)/Language/Haskell/Parser.$O:	$(OBJDIR)/Language/Haskell/Lexer.$O
+$(OBJDIR)/Language/Haskell/Pretty.$O:	$(OBJDIR)/Language/Haskell/Syntax.$O
+
+# C-files dependencies.
+Language/Haskell/Lexer.$C:	Language/Haskell/ParseMonad.$C
+Language/Haskell/ParseMonad.$C:	Language/Haskell/Syntax.$C
+Language/Haskell/ParseUtils.$C:	Language/Haskell/Syntax.$C
+Language/Haskell/ParseUtils.$C:	Language/Haskell/ParseMonad.$C
+Language/Haskell/ParseUtils.$C:	Language/Haskell/Pretty.$C
+Language/Haskell/Parser.$C:	Language/Haskell/ParseMonad.$C
+Language/Haskell/Parser.$C:	Language/Haskell/ParseUtils.$C
+Language/Haskell/Parser.$C:	Language/Haskell/Syntax.$C
+Language/Haskell/Parser.$C:	Language/Haskell/Lexer.$C
+Language/Haskell/Pretty.$C:	Language/Haskell/Syntax.$C
+
