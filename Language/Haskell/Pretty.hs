@@ -638,6 +638,15 @@ braceList = braces . myFsepSimple . punctuate comma
 bracketList :: [Doc] -> Doc
 bracketList = brackets . myFsepSimple
 
+-- Wrap in braces and semicolons, with an extra space at the start in
+-- case the first doc begins with "-", which would be scanned as {-
+flatBlock :: [Doc] -> Doc
+flatBlock = braces . (space <>) . hsep . punctuate semi
+
+-- Same, but put each thing on a separate line
+prettyBlock :: [Doc] -> Doc
+prettyBlock = braces . (space <>) . vcat . punctuate semi
+
 -- Monadic PP Combinators -- these examine the env
 
 blankline :: Doc -> Doc
@@ -648,21 +657,20 @@ topLevel header dl = do
 	 e <- fmap layout getPPEnv
 	 case e of
 	     PPOffsideRule -> header $$ vcat dl
-	     PPSemiColon -> header $$ (braces . vcat . punctuate semi) dl
-	     PPInLine -> header $$ (braces . vcat . punctuate semi) dl
-	     PPNoLayout -> header <+> (braces . hsep . punctuate semi) dl
+	     PPSemiColon -> header $$ prettyBlock dl
+	     PPInLine -> header $$ prettyBlock dl
+	     PPNoLayout -> header <+> flatBlock dl
 
 body :: (PPHsMode -> Int) -> [Doc] -> Doc
 body f dl = do
 	 e <- fmap layout getPPEnv
 	 case e of PPOffsideRule -> indent
 		   PPSemiColon   -> indentExplicit
-		   _ -> inline
+		   _ -> flatBlock dl
 		   where
-		   inline = braces . hsep . punctuate semi $ dl
 		   indent  = do{i <-fmap f getPPEnv;nest i . vcat $ dl}
 		   indentExplicit = do {i <- fmap f getPPEnv;
-			   nest i . braces . vcat . punctuate semi $ dl}
+			   nest i . prettyBlock $ dl}
 
 ($$$) :: Doc -> Doc -> Doc
 a $$$ b = layoutChoice (a $$) (a <+>) b
