@@ -1,0 +1,4 @@
+# List of the modules in this package that aren't to be used with Hugs.
+# Only the first word on each line counts; the rest can be explanation.
+#
+Language.Haskell.TH.THInternals	internals for GHC
