@@ -333,7 +333,7 @@ lexConIdOrQual qual = do
 	rest <- getInput
 	case rest of
 	  '.':c:_
-	     | isLower c -> do		-- qualified varid?
+	     | isLower c || c == '_' -> do	-- qualified varid?
 		discard 1
 		id <- lexWhile isIdent
 		case lookup id reserved_ids of
