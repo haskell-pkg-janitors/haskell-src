@@ -1,0 +1,22 @@
+Package {
+	name		= "haskell-src",
+#ifdef INSTALLING
+	import_dirs	= [ "$libdir/imports/haskell-src" ],
+#else
+	import_dirs	= [ "$libdir/libraries/haskell-src" ],
+#endif
+	source_dirs	= [],
+#ifdef INSTALLING
+	library_dirs	= [ "$libdir" ],
+#else
+	library_dirs	= [ "$libdir/libraries/haskell-src" ],
+#endif
+	hs_libraries	= [ "HShaskell-src" ],
+	extra_libraries	= [],
+	include_dirs	= [],
+	c_includes	= [],
+	package_deps	= [ "base" ],
+	extra_ghc_opts	= [],
+	extra_cc_opts	= [],
+	extra_ld_opts	= []
+}
