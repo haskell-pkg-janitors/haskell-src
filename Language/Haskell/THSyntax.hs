@@ -443,6 +443,7 @@ nestDepth :: Int
 nestDepth = 4
 
 type Precedence = Int
+appPrec, opPrec, noPrec :: Precedence
 appPrec = 2	-- Argument of a function application
 opPrec  = 1	-- Argument of an infix operator
 noPrec  = 0	-- Others
