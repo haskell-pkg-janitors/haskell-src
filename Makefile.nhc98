@@ -1,9 +1,9 @@
 THISPKG	= haskell-src
 SEARCH	=
-EXTRA_H_FLAGS = +RTS -K6M -RTS
+EXTRA_H_FLAGS = -K6M
 # NOTE: 200M is ridiculous, but otherwise there is a segfault with CFG=p
 # for Language/Haskell/Parser.hs. More investigation is needed here...
-EXTRA_HBC_FLAGS = +RTS -H200M -A2M -RTS
+EXTRA_HBC_FLAGS = -H220M -A4M
 
 SRCS	= \
 	Language/Haskell/Lexer.hs Language/Haskell/ParseMonad.hs \
@@ -18,17 +18,7 @@ include ../Makefile.common
 Language/Haskell/Parser.hs: Language/Haskell/Parser.ly
 	happy $<
 
-# Here are the dependencies.
-$(OBJDIR)/Language/Haskell/Lexer.$O:	$(OBJDIR)/Language/Haskell/ParseMonad.$O
-$(OBJDIR)/Language/Haskell/ParseMonad.$O: $(OBJDIR)/Language/Haskell/Syntax.$O
-$(OBJDIR)/Language/Haskell/ParseUtils.$O: $(OBJDIR)/Language/Haskell/Syntax.$O
-$(OBJDIR)/Language/Haskell/ParseUtils.$O: $(OBJDIR)/Language/Haskell/ParseMonad.$O
-$(OBJDIR)/Language/Haskell/ParseUtils.$O: $(OBJDIR)/Language/Haskell/Pretty.$O
-$(OBJDIR)/Language/Haskell/Parser.$O:	$(OBJDIR)/Language/Haskell/ParseMonad.$O
-$(OBJDIR)/Language/Haskell/Parser.$O:	$(OBJDIR)/Language/Haskell/ParseUtils.$O
-$(OBJDIR)/Language/Haskell/Parser.$O:	$(OBJDIR)/Language/Haskell/Syntax.$O
-$(OBJDIR)/Language/Haskell/Parser.$O:	$(OBJDIR)/Language/Haskell/Lexer.$O
-$(OBJDIR)/Language/Haskell/Pretty.$O:	$(OBJDIR)/Language/Haskell/Syntax.$O
+# Here are any extra dependencies.
 
 # C-files dependencies.
 Language/Haskell/Lexer.$C:	Language/Haskell/ParseMonad.$C
