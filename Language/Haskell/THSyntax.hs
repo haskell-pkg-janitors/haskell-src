@@ -205,7 +205,7 @@ data Dec
   deriving( Show )
 
 data Foreign = ImportF Callconv Safety String String Type
-             -- ExportF missing...
+             | ExportF Callconv        String String Type
          deriving( Show )
 
 data Callconv = CCall | StdCall
@@ -785,6 +785,12 @@ pprForeign (ImportF callconv safety impent as typ)
   <+> showtextl callconv
   <+> showtextl safety
   <+> text (show impent)
+  <+> text as
+  <+> text "::" <+> pprType typ
+pprForeign (ExportF callconv        expent as typ)
+    = text "foreign export"
+  <+> showtextl callconv
+  <+> text (show expent)
   <+> text as
   <+> text "::" <+> pprType typ
 
