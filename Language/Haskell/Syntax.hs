@@ -366,7 +366,7 @@ data HsLiteral
 -- * The parser does not take precedence and associativity into account,
 --   so it will leave 'HsInfixApp's associated to the left.
 --
--- * The 'Language.Haskell.Pretty.Pretty' instance for 'Expr' does not
+-- * The 'Language.Haskell.Pretty.Pretty' instance for 'HsExp' does not
 --   add parentheses in printing.
 
 data HsExp
