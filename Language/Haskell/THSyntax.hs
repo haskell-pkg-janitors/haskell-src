@@ -1,11 +1,15 @@
-module Language.Haskell.THSyntax where
+module Language.Haskell.THSyntax 
+where
 
-import Data.IORef ( IORef, newIORef, readIORef, writeIORef )
-import System.IO.Unsafe( unsafePerformIO )
+import Monad            (liftM)
+
+import Data.IORef       ( IORef, newIORef, readIORef, writeIORef )
+import System.IO.Unsafe ( unsafePerformIO )
 import Text.PrettyPrint.HughesPJ
 
+
 -------------------------------------------------------
--- The Q monad as IO
+-- The quotation monad as IO
 
 type Q a = IO a
 
@@ -15,8 +19,11 @@ returnQ = return
 bindQ :: Q a -> (a -> Q b) -> Q b
 bindQ = (>>=)
 
+-- global variable to generate unique symbols
+--
 counter :: IORef Int
-counter = unsafePerformIO(newIORef 0)
+{-# NOINLINE counter #-}
+counter = unsafePerformIO (newIORef 0)
 
 gensym :: String -> Q String
 gensym s = do { n <- readIORef counter
@@ -34,7 +41,7 @@ instance Lift Char where
 
 ------------------------------------------------------
 
-data Lit = Int Int | Char Char | CrossStage String 
+data Lit = Int Int | Char Char
 
 data Pat 
   = Plit Lit                      -- { 5 or 'c' }
@@ -56,6 +63,7 @@ data Exp
   | Lit Lit                              -- { 5 or 'c'}
   | App Exp Exp                          -- { f x }
   | Infix (Maybe Exp) String (Maybe Exp) -- {x + y} or {(x+)} or {(+ x)} or {(+)}
+  | Neg Exp				 -- { -e }
   | Lam [Pat] Exp                        -- { \ p1 p2 -> e }
   | Tup [Exp]                            -- { (e1,e2) }  
   | Cond Exp Exp Exp                     -- { if e1 then e2 else e3 }
@@ -246,7 +254,6 @@ lit c = return (Lit c)
 app :: Expr -> Expr -> Expr
 app x y = do { a <- x; b <- y; return (App a b)}
 
-
 infixE :: Maybe Expr -> String -> Maybe Expr -> Expr
 infixE (Just x) s (Just y) = do { a <- x; b <- y; return(Infix (Just a) s (Just b))}
 infixE Nothing  s (Just y) = do { b <- y; return(Infix Nothing s (Just b))}
@@ -256,6 +263,9 @@ infixE Nothing  s Nothing  = return(Infix Nothing s Nothing)
 infixApp x y z = infixE (Just x) y (Just z)
 sectionL x y = infixE (Just x) y Nothing
 sectionR x y = infixE Nothing x (Just y)
+
+neg :: Expr -> Expr
+neg = liftM Neg
 
 from :: Expr -> Expr
 from x = do { a <- x; return (ArithSeq (From a)) }  
