@@ -346,9 +346,11 @@ with one token of lookahead.  The HACK is to parse the context as a btype
 C a, or (C1 a, C2 b, ... Cn z) and convert it into a context.  Blaach!
 
 > ctype :: { HsQualType }
->	: btype '=>' type		{% checkContext $1 `thenP` \c ->
->					   returnP (HsQualType c $3) }
+>	: context '=>' type		{ HsQualType $1 $3 }
 >	| type				{ HsQualType [] $1 }
+
+> context :: { HsContext }
+>	: btype				{% checkContext $1 }
 
 > types	:: { [HsType] }
 >	: types ',' type		{ $3 : $1 }
@@ -490,8 +492,7 @@ the exp0 productions to distinguish these from the others (exp0a).
 >	| exp10b			{ $1 }
 
 > exp10a :: { HsExp }
->	: '\\' aexps '->' exp		{% checkPatterns (reverse $2) `thenP` \ps ->
->					   returnP (HsLambda ps $4) }
+>	: '\\' apats '->' exp		{ HsLambda (reverse $2) $4 }
 >  	| 'let' decllist 'in' exp	{ HsLet $2 $4 }
 >	| 'if' exp 'then' exp 'else' exp { HsIf $2 $4 $6 }
 
@@ -505,9 +506,12 @@ the exp0 productions to distinguish these from the others (exp0a).
 >	: fexp aexp			{ HsApp $1 $2 }
 >  	| aexp				{ $1 }
 
-> aexps :: { [HsExp] }
->	: aexps aexp			{ $2 : $1 }
->  	| aexp				{ [$1] }
+> apats :: { [HsPat] }
+>	: apats apat			{ $2 : $1 }
+>  	| apat				{ [$1] }
+
+> apat :: { HsPat }
+>	: aexp				{% checkPattern $1 }
 
 UGLY: Because patterns and expressions are mixed, aexp has to be split into
 two rules: One right-recursive and one left-recursive. Otherwise we get two
