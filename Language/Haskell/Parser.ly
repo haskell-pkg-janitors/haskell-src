@@ -127,8 +127,8 @@ Module Header
 >		{ HsModule $1 main_mod Nothing (reverse (fst $2)) (reverse (snd $2)) }
 
 > body :: { ([HsImportDecl],[HsDecl]) }
->	:  '{' bodyaux '}'				{ $2 }
-> 	|      layout_on  bodyaux close			{ $2 }
+>	: '{'  bodyaux '}'				{ $2 }
+>	| open bodyaux close				{ $2 }
 
 > bodyaux :: { ([HsImportDecl],[HsDecl]) }
 >	: optsemis impdecls semis topdecls optsemis	{ ($2, $4) }
@@ -286,8 +286,8 @@ shift/reduce-conflict, so we don't handle this case here, but in bodyaux.
 >	| valdef			{ $1 }
 
 > decllist :: { [HsDecl] }
->	: '{' decls '}'			{ $2 }
->	|     layout_on  decls close	{ $2 }
+>	: '{'  decls '}'		{ $2 }
+>	| open decls close		{ $2 }
 
 > signdecl :: { HsDecl }
 >	: srcloc vars '::' ctype	{ HsTypeSig $1 (reverse $2) $4 }
@@ -426,9 +426,9 @@ Class declarations
 Instance declarations
 
 > optvaldefs :: { [HsDecl] }
->	: 'where' '{' valdefs '}'		{ $3 }
->	| 'where' layout_on valdefs close	{ $3 }
->	| {- empty -}				{ [] }
+>	: 'where' '{'  valdefs '}'	{ $3 }
+>	| 'where' open valdefs close	{ $3 }
+>	| {- empty -}			{ [] }
 
 > valdefs :: { [HsDecl] }
 >	: optsemis valdefs1 optsemis	{ reverse $2 }
@@ -591,8 +591,8 @@ List comprehensions
 Case alternatives
 
 > altslist :: { [HsAlt] }
->	: '{' alts '}'			{ $2 }
->	|     layout_on  alts close	{ $2 }
+>	: '{'  alts '}'			{ $2 }
+>	| open alts close		{ $2 }
 
 > alts :: { [HsAlt] }
 >	: optsemis alts1 optsemis	{ reverse $2 }
@@ -627,8 +627,8 @@ without introducing conflicts.  This also ensures that the last stmt is
 an expression.
 
 > stmtlist :: { [HsStmt] }
->	  : '{' stmts '}'		{ $2 }
->	  |     layout_on  stmts close	{ $2 }
+>	: '{'  stmts '}'		{ $2 }
+>	| open stmts close		{ $2 }
 
 > stmts :: { [HsStmt] }
 >	: 'let' decllist ';' stmts	{ HsLetStmt $2 : $4 }
@@ -755,16 +755,16 @@ Variables, Constructors and Operators.
 >	| RATIONAL		{ HsFrac $1 }
 >	| STRING		{ HsString $1 }
 
->  srcloc :: { SrcLoc }	:	{% getSrcLoc }
+> srcloc :: { SrcLoc }	:	{% getSrcLoc }
  
 -----------------------------------------------------------------------------
 Layout
 
+> open  :: { () }	:	{% pushCurrentContext }
+
 > close :: { () }
 >	: vccurly		{ () } -- context popped in lexer.
 >	| error			{% popContext }
-
-> layout_on  :: { () }	:	{% pushCurrentContext }
 
 -----------------------------------------------------------------------------
 Miscellaneous (mostly renamings)
