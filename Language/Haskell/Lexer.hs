@@ -110,7 +110,11 @@ reserved_ops = [
  ( "->", RightArrow ),
  ( "@",  At ),
  ( "~",  Tilde ),
- ( "=>", DoubleArrow ),
+ ( "=>", DoubleArrow )
+ ]
+
+special_varops :: [(String,Token)]
+special_varops = [
  ( "-",  Minus ),			--ToDo: shouldn't be here
  ( "!",  Exclamation )		--ditto
  ]
@@ -138,7 +142,11 @@ reserved_ids = [
  ( "of", 	KW_Of ),
  ( "then", 	KW_Then ),
  ( "type", 	KW_Type ),
- ( "where", 	KW_Where ),
+ ( "where", 	KW_Where )
+ ]
+
+special_varids :: [(String,Token)]
+special_varids = [
  ( "as", 	KW_As ),
  ( "qualified", KW_Qualified ),
  ( "hiding", 	KW_Hiding )
@@ -249,13 +257,13 @@ lexToken = do
 
 	    | isLower c || c == '_' -> do
 		ident <- lexWhile isIdent
-		return $ case lookup ident reserved_ids of
+		return $ case lookup ident (reserved_ids ++ special_varids) of
 			Just keyword -> keyword
 			Nothing -> VarId ident
 
 	    | isSymbol c -> do
 		sym <- lexWhile isSymbol
-		return $ case lookup sym reserved_ops of
+		return $ case lookup sym (reserved_ops ++ special_varops) of
 			Just t  -> t
 			Nothing -> case c of
 			    ':' -> ConSym sym
