@@ -44,6 +44,10 @@ data LexContext = NoLayout | Layout Int
 
 type ParseState = [LexContext]
 
+indentOfParseState :: ParseState -> Int
+indentOfParseState (Layout n:_) = n
+indentOfParseState _            = 0
+
 -- | Static parameters governing a parse.
 -- More to come later, e.g. literate mode, language extensions.
 
@@ -99,10 +103,19 @@ P m `atSrcLoc` loc = P $ \i x y _l -> m i x y loc
 getSrcLoc :: P SrcLoc
 getSrcLoc = P $ \_i _x _y l s _m -> Ok s l
 
+-- Enter a new layout context.  If we are already in a layout context,
+-- ensure that the new indent is greater than the indent of that context.
+-- (So if the source loc is not to the right of the current indent, an
+-- empty list {} will be inserted.)
+
 pushCurrentContext :: P ()
 pushCurrentContext = do
 	loc <- getSrcLoc
-	pushContext (Layout (srcColumn loc))
+	indent <- currentIndent
+	pushContext (Layout (max (indent+1) (srcColumn loc)))
+
+currentIndent :: P Int
+currentIndent = P $ \_r _x _y loc stk _mode -> Ok stk (indentOfParseState stk)
 
 pushContext :: LexContext -> P ()
 pushContext ctxt =
@@ -209,10 +222,7 @@ startToken = Lex $ \cont -> P $ \s x y _ stk mode ->
 
 getOffside :: Lex a Ordering
 getOffside = Lex $ \cont -> P $ \r x y loc stk ->
-		let ord = case stk of
-			(Layout n:_) -> compare x n
-			_            -> GT
-		in runP (cont ord) r x y loc stk
+		runP (cont (compare x (indentOfParseState stk))) r x y loc stk
 
 pushContextL :: LexContext -> Lex a ()
 pushContextL ctxt = Lex $ \cont -> P $ \r x y loc stk ->
