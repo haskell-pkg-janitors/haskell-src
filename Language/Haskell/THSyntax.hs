@@ -18,6 +18,7 @@ where
 
 import Monad            ( liftM, liftM2, sequence )
 
+import Control.Monad.Trans ( MonadIO(..) )
 import Data.IORef       ( IORef, newIORef, readIORef, writeIORef )
 import System.IO.Unsafe ( unsafePerformIO )
 import Text.PrettyPrint.HughesPJ
@@ -35,7 +36,10 @@ instance Monad Q where
    return x    = Q (return x)
    (Q m) >>= k = Q (m >>= \r -> unQ (k r))
    fail s      = Q (fail s)
-   
+
+instance MonadIO Q where
+    liftIO = qIO
+
 qIO :: IO a -> Q a
 qIO io = Q io
 
