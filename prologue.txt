@@ -1,0 +1,3 @@
+The @haskell-src@ package contains libraries which provide facilities
+for manipulating Haskell source code: an abstract syntax, lexer,
+parser and pretty-printer.
