@@ -52,6 +52,9 @@ data ParseMode = ParseMode {
 		parseFilename :: String
 		}
 
+-- | Default parameters for a parse,
+-- currently just a marker for an unknown filename.
+
 defaultParseMode :: ParseMode
 defaultParseMode = ParseMode {
 		parseFilename = "<unknown>"

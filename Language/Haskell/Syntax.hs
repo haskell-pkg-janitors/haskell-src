@@ -9,7 +9,7 @@
 -- Portability :  portable
 --
 -- A suite of datatypes describing the abstract syntax of Haskell 98
--- <http://www.haskell.org/definition/> plus a few extensions:
+-- <http://www.haskell.org/onlinereport/> plus a few extensions:
 --
 --   * multi-parameter type classes
 --
@@ -79,7 +79,7 @@ data HsSpecialCon
 	| HsFunCon		-- ^ Function type constructor @->@
 	| HsTupleCon Int	-- ^ /n/-ary tuple type and data
 				--   constructors @(,)@ etc
-	| HsCons		-- ^ list data constructor @:@
+	| HsCons		-- ^ list data constructor @(:)@
   deriving (Eq,Ord)
 
 instance Show HsSpecialCon where
@@ -113,7 +113,7 @@ instance Show HsName where
    showsPrec _ (HsIdent s) = showString s
    showsPrec _ (HsSymbol s) = showString s
 
--- | Qualified operators.
+-- | Possibly qualified infix operators (/qop/), appearing in expressions.
 data HsQOp
 	= HsQVarOp HsQName
 	| HsQConOp HsQName
@@ -123,7 +123,7 @@ instance Show HsQOp where
    showsPrec p (HsQVarOp n) = showsPrec p n
    showsPrec p (HsQConOp n) = showsPrec p n
 
--- | Operators.
+-- | Operators, appearing in @infix@ declarations.
 data HsOp
 	= HsVarOp HsName
 	| HsConOp HsName
