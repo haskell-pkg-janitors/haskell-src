@@ -26,9 +26,10 @@ parensIf False d = d
 
 ------------------------------
 
+pprint :: Ppr a => a -> String
+pprint x = render $ to_HPJ_Doc $ ppr x
+
 class Ppr a where
-    pprint :: a -> String
-    pprint x = render $ to_HPJ_Doc $ ppr x
     ppr :: a -> Doc
     ppr_list :: [a] -> Doc
     ppr_list = vcat . map ppr
