@@ -1,15 +1,14 @@
 # -----------------------------------------------------------------------------
-# $Id: Makefile,v 1.11 2003/11/11 11:50:53 simonmar Exp $
+# $Id: Makefile,v 1.12 2004/01/15 14:43:19 igloo Exp $
 
 TOP=..
 include $(TOP)/mk/boilerplate.mk
 
-ALL_DIRS     = Language/Haskell Language/Haskell/TH
+ALL_DIRS     = Language/Haskell
 PACKAGE      = haskell-src
 PACKAGE_DEPS = base
 
 Language/Haskell/Parser_HC_OPTS += -Onot -fno-warn-incomplete-patterns
-Language/Haskell/THSyntax_HC_OPTS += -fglasgow-exts
 
 SRC_HADDOCK_OPTS += -t "Haskell Hierarchical Libraries ($(PACKAGE) package)"
 
