@@ -113,7 +113,7 @@ data Lit = CharL Char
          | IntPrimL Integer
          | FloatPrimL Rational
          | DoublePrimL Rational
-    deriving( Show )
+    deriving( Show, Eq )
 
     -- We could add Int, Float, Double etc, as we do in HsLit, 
     -- but that could complicate the
@@ -129,16 +129,16 @@ data Pat
   | WildP                         -- { _ }
   | RecP String [FieldPat]        -- f (Pt { pointx = x }) = g x
   | ListP [ Pat ]                 -- { [1,2,3] }
-  deriving( Show )
+  deriving( Show, Eq )
 
 type FieldPat = (String,Pat)
 
 data Match = Match Pat Body [Dec]
                                     -- case e of { pat -> body where decs } 
-    deriving Show
+    deriving( Show, Eq )
 data Clause = Clause [Pat] Body [Dec]
                                     -- f { p1 p2 = body where decs }
-    deriving Show
+    deriving( Show, Eq )
  
 data Exp 
   = VarE String                        -- { x }
@@ -165,7 +165,7 @@ data Exp
   | SigE Exp Type                      -- e :: t
   | RecConE String [FieldExp]          -- { T { x = y, z = w } }
   | RecUpdE Exp [FieldExp]             -- { (f x) { z = w } }
-  deriving( Show )
+  deriving( Show, Eq )
 
 type FieldExp = (String,Exp)
 
@@ -174,18 +174,18 @@ type FieldExp = (String,Exp)
 data Body
   = GuardedB [(Exp,Exp)]     -- f p { | e1 = e2 | e3 = e4 } where ds
   | NormalB Exp              -- f p { = e } where ds
-  deriving( Show )
+  deriving( Show, Eq )
 
 data Stmt
   = BindS Pat Exp
   | LetS [ Dec ]
   | NoBindS Exp
   | ParS [[Stmt]]
-  deriving( Show )
+  deriving( Show, Eq )
 
 data Range = FromR Exp | FromThenR Exp Exp
            | FromToR Exp Exp | FromThenToR Exp Exp Exp
-          deriving( Show )
+          deriving( Show, Eq )
   
 data Dec 
   = FunD String [Clause]              -- { f p1 p2 = b where decs }
@@ -202,27 +202,27 @@ data Dec
                                       --       where ds }
   | SigD String Type                  -- { length :: [a] -> Int }
   | ForeignD Foreign
-  deriving( Show )
+  deriving( Show, Eq )
 
 data Foreign = ImportF Callconv Safety String String Type
              | ExportF Callconv        String String Type
-         deriving( Show )
+         deriving( Show, Eq )
 
 data Callconv = CCall | StdCall
-          deriving( Show )
+          deriving( Show, Eq )
 
 data Safety = Unsafe | Safe | Threadsafe
-        deriving( Show )
+        deriving( Show, Eq )
 
 type Cxt = [Type]    -- (Eq a, Ord b)
 
 data Strict = IsStrict | NotStrict
-         deriving( Show )
+         deriving( Show, Eq )
 
 data Con = NormalC String [StrictType]
          | RecC String [VarStrictType]
          | InfixC StrictType String StrictType
-         deriving( Show )
+         deriving( Show, Eq )
 
 type StrictType = (Strict, Type)
 type StrictTypeQ = Q StrictType
@@ -230,7 +230,7 @@ type VarStrictType = (String, Strict, Type)
 type VarStrictTypeQ = Q VarStrictType
 
 data Module = Module [ Dec ] 
-             deriving( Show )
+             deriving( Show, Eq )
 
 -- FIXME: Why this special status for "List" (even tuples might be handled
 --      differently)? -=chak
@@ -241,7 +241,7 @@ data Type = ForallT [String] Cxt Type -- forall <vars>. <ctxt> -> <type>
           | ArrowT                    -- ->
           | ListT                     -- []
           | AppT Type Type            -- T a b
-      deriving( Show )
+      deriving( Show, Eq )
  
 ---------------------------------------------------
 -- Combinator based types
