@@ -2,7 +2,7 @@
 	-- Need GlaExts for the nested forall in defn of Q
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Language.Haskell.THSyntax
+-- Module      :  Language.Haskell.Syntax
 -- Copyright   :  (c) The University of Glasgow 2003
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
 -- 
@@ -14,7 +14,7 @@
 --
 -----------------------------------------------------------------------------
 
-module Language.Haskell.TH.THSyntax(
+module Language.Haskell.TH.Syntax(
 	Quasi(..), Lift(..), 
 
 	Q, runQ, 
@@ -78,7 +78,7 @@ class Monad m => Quasi m where
 --  This instance is used only when running a Q
 --  computation in the IO monad, usually just to
 --  print the result.  There is no interesting
---  type environment, so reificaiton isn't going to
+--  type environment, so reification isn't going to
 --  work.
 --
 -----------------------------------------------------
@@ -373,7 +373,7 @@ data Lit = CharL Char
 
     -- We could add Int, Float, Double etc, as we do in HsLit, 
     -- but that could complicate the
-    -- suppposedly-simple THSyntax literal type
+    -- suppposedly-simple TH.Syntax literal type
 
 data Pat 
   = LitP Lit                      -- { 5 or 'c' }

@@ -3,5 +3,7 @@
 #
 Language.Haskell.TH	GHC only
 Language.Haskell.TH.THInternals	GHC only
-Language.Haskell.TH.THLib	GHC only
-Language.Haskell.TH.THSyntax	GHC only
+Language.Haskell.TH.Lib	GHC only
+Language.Haskell.TH.Ppr	GHC only
+Language.Haskell.TH.PprLib	GHC only
+Language.Haskell.TH.Syntax	GHC only

@@ -24,11 +24,13 @@ module Language.Haskell.TH(
 	Fixity(..), FixityDirection(..), defaultFixity, maxPrecedence,
 
 	-- Library functions
-	module Language.Haskell.TH.THLib,
+	module Language.Haskell.TH.Lib,
+    -- Pretty-printer
+	module Language.Haskell.TH.Ppr,
 	
    ) where
 
-import Language.Haskell.TH.THSyntax
-import Language.Haskell.TH.THLib
-
+import Language.Haskell.TH.Syntax
+import Language.Haskell.TH.Lib
+import Language.Haskell.TH.Ppr
 
