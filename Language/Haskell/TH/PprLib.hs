@@ -5,7 +5,7 @@
 module Language.Haskell.TH.PprLib (
 
 	-- * The document type
-        Doc,            -- Abstract
+        Doc,            -- Abstract, instance of Show
 
 	-- * Primitive Documents
         empty,
@@ -48,6 +48,9 @@ infixl 5 $$, $+$
 -- The interface
 
 -- The primitive Doc values
+
+instance Show Doc where
+   show d = HPJ.render (to_HPJ_Doc d)
 
 isEmpty :: Doc    -> PprM Bool;  -- ^ Returns 'True' if the document is empty
 
