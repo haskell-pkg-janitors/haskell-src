@@ -17,7 +17,7 @@ module Language.Haskell.Pretty (
 		-- * Pretty printing
 		Pretty,
 		prettyPrintStyleMode, prettyPrintWithMode, prettyPrint,
-		-- * Pretty-printing styles (from @Text.PrettyPrint.HughesPJ@)
+		-- * Pretty-printing styles (from "Text.PrettyPrint.HughesPJ")
 		P.Style(..), P.style, P.Mode(..),
 		-- * Haskell formatting modes
 		PPHsMode(..), Indent, PPLayout(..), defaultMode) where

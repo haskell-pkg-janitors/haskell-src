@@ -68,6 +68,7 @@ data SrcLoc = SrcLoc {
 		}
   deriving (Eq,Ord,Show)
 
+-- | The name of a Haskell module.
 newtype Module = Module String
   deriving (Eq,Ord,Show)
 
@@ -76,9 +77,9 @@ newtype Module = Module String
 -- data constructors.
 
 data HsSpecialCon
-	= HsUnitCon		-- ^ Unit type and data constructor @()@
-	| HsListCon		-- ^ List type constructor @[]@
-	| HsFunCon		-- ^ Function type constructor @->@
+	= HsUnitCon		-- ^ unit type and data constructor @()@
+	| HsListCon		-- ^ list type constructor @[]@
+	| HsFunCon		-- ^ function type constructor @->@
 	| HsTupleCon Int	-- ^ /n/-ary tuple type and data
 				--   constructors @(,)@ etc
 	| HsCons		-- ^ list data constructor @(:)@
@@ -87,34 +88,37 @@ data HsSpecialCon
 -- | This type is used to represent qualified variables, and also
 -- qualified constructors.
 data HsQName
-	= Qual Module HsName
-	| UnQual HsName
-	| Special HsSpecialCon
+	= Qual Module HsName	-- ^ name qualified with a module name
+	| UnQual HsName		-- ^ unqualified name
+	| Special HsSpecialCon	-- ^ built-in constructor with special syntax
   deriving (Eq,Ord,Show)
 
 -- | This type is used to represent variables, and also constructors.
 data HsName
-	= HsIdent String	-- ^ /varid/ or /conid/.
+	= HsIdent String	-- ^ /varid/ or /conid/
 	| HsSymbol String	-- ^ /varsym/ or /consym/
   deriving (Eq,Ord,Show)
 
 -- | Possibly qualified infix operators (/qop/), appearing in expressions.
 data HsQOp
-	= HsQVarOp HsQName
-	| HsQConOp HsQName
+	= HsQVarOp HsQName	-- ^ variable operator (/qvarop/)
+	| HsQConOp HsQName	-- ^ constructor operator (/qconop/)
   deriving (Eq,Ord,Show)
 
 -- | Operators, appearing in @infix@ declarations.
 data HsOp
-	= HsVarOp HsName
-	| HsConOp HsName
+	= HsVarOp HsName	-- ^ variable operator (/varop/)
+	| HsConOp HsName	-- ^ constructor operator (/conop/)
   deriving (Eq,Ord,Show)
 
+-- | A name (/cname/) of a component of a class or data type in an @import@
+-- or export specification.
 data HsCName
-	= HsVarName HsName
-	| HsConName HsName
+	= HsVarName HsName	-- ^ name of a method or field
+	| HsConName HsName	-- ^ name of a data constructor
   deriving (Eq,Ord,Show)
 
+-- | A Haskell source module.
 data HsModule = HsModule SrcLoc Module (Maybe [HsExportSpec])
                          [HsImportDecl] [HsDecl]
   deriving Show
@@ -136,9 +140,17 @@ data HsExportSpec
   deriving (Eq,Show)
 
 -- | Import declaration.
-data HsImportDecl
-	 = HsImportDecl SrcLoc Module Bool (Maybe Module)
-	                (Maybe (Bool,[HsImportSpec]))
+data HsImportDecl = HsImportDecl
+	{ importLoc :: SrcLoc		-- ^ position of the @import@ keyword.
+	, importModule :: Module	-- ^ name of the module imported.
+	, importQualified :: Bool	-- ^ imported @qualified@?
+	, importAs :: Maybe Module	-- ^ optional alias name in an
+					-- @as@ clause.
+	, importSpecs :: Maybe (Bool,[HsImportSpec])
+			-- ^ optional list of import specifications.
+			-- The 'Bool' is 'True' if the names are excluded
+			-- by @hiding@.
+	}
   deriving (Eq,Show)
 
 -- | Import specification.
@@ -154,10 +166,11 @@ data HsImportSpec
 			-- a datatype imported with some of its constructors.
   deriving (Eq,Show)
 
+-- | Associativity of an operator.
 data HsAssoc
-	 = HsAssocNone
-	 | HsAssocLeft
-	 | HsAssocRight
+	 = HsAssocNone	-- ^ non-associative operator (declared with @infix@)
+	 | HsAssocLeft	-- ^ left-associative operator (declared with @infixl@).
+	 | HsAssocRight	-- ^ right-associative operator (declared with @infixr@)
   deriving (Eq,Show)
 
 data HsDecl
@@ -173,25 +186,35 @@ data HsDecl
 	 | HsPatBind	 SrcLoc HsPat HsRhs {-where-} [HsDecl]
   deriving (Eq,Show)
 
+-- | Clauses of a function binding.
 data HsMatch
 	 = HsMatch SrcLoc HsName [HsPat] HsRhs {-where-} [HsDecl]
   deriving (Eq,Show)
 
+-- | Declaration of a data constructor.
 data HsConDecl
 	 = HsConDecl SrcLoc HsName [HsBangType]
+				-- ^ ordinary data constructor
 	 | HsRecDecl SrcLoc HsName [([HsName],HsBangType)]
+				-- ^ record constructor
   deriving (Eq,Show)
 
+-- | The type of a constructor argument or field, optionally including
+-- a strictness annotation.
 data HsBangType
-	 = HsBangedTy   HsType
-	 | HsUnBangedTy HsType
+	 = HsBangedTy   HsType	-- ^ strict component, marked with \"@!@\"
+	 | HsUnBangedTy HsType	-- ^ non-strict component
   deriving (Eq,Show)
 
+-- | The right hand side of a function or pattern binding.
 data HsRhs
-	 = HsUnGuardedRhs HsExp
+	 = HsUnGuardedRhs HsExp	-- ^ unguarded right hand side (/exp/)
 	 | HsGuardedRhss  [HsGuardedRhs]
+				-- ^ guarded right hand side (/gdrhs/)
   deriving (Eq,Show)
 
+-- | A guarded right hand side @|@ /exp/ @=@ /exp/.
+-- The first expression will be Boolean-valued.
 data HsGuardedRhs
 	 = HsGuardedRhs SrcLoc HsExp HsExp
   deriving (Eq,Show)
@@ -202,12 +225,13 @@ data HsQualType
 	 = HsQualType HsContext HsType
   deriving (Eq,Show)
 
+-- | Haskell types and type constructors.
 data HsType
-	 = HsTyFun   HsType HsType
-	 | HsTyTuple [HsType]
-	 | HsTyApp   HsType HsType
-	 | HsTyVar   HsName
-	 | HsTyCon   HsQName
+	 = HsTyFun   HsType HsType	-- ^ function type
+	 | HsTyTuple [HsType]		-- ^ tuple type
+	 | HsTyApp   HsType HsType	-- ^ application of a type constructor
+	 | HsTyVar   HsName		-- ^ type variable
+	 | HsTyCon   HsQName		-- ^ named type or type constructor
   deriving (Eq,Show)
 
 type HsContext = [HsAsst]
@@ -217,12 +241,15 @@ type HsContext = [HsAsst]
 --   allows multiple parameters, and allows them to be /type/s.
 type HsAsst    = (HsQName,[HsType])
 
--- | /literal/
+-- | /literal/.
+-- Values of this type hold the abstract value of the literal, not the
+-- precise string representation used.  For example, @10@, @0o12@ and @0xa@
+-- have the same representation.
 data HsLiteral
-	= HsInt		Integer
-	| HsChar	Char
-	| HsString	String
-	| HsFrac	Rational
+	= HsChar	Char		-- ^ character literal
+	| HsString	String		-- ^ string literal
+	| HsInt		Integer		-- ^ integer literal
+	| HsFrac	Rational	-- ^ floating point literal
 	| HsCharPrim	Char		-- ^ GHC unboxed character literal
 	| HsStringPrim	String		-- ^ GHC unboxed string literal
 	| HsIntPrim	Integer		-- ^ GHC unboxed integer literal
@@ -238,52 +265,64 @@ data HsLiteral
 -- checks, these constructors should not be used.
 
 data HsExp
-	= HsVar HsQName
-	| HsCon HsQName
-	| HsLit HsLiteral
-	| HsInfixApp HsExp HsQOp HsExp
-	| HsApp HsExp HsExp
-	| HsNegApp HsExp
-	| HsLambda SrcLoc [HsPat] HsExp
-	| HsLet [HsDecl] HsExp
-	| HsIf HsExp HsExp HsExp
-	| HsCase HsExp [HsAlt]
-	| HsDo [HsStmt]			-- ^ Do expression:
-					-- The last statement in the list
+	= HsVar HsQName			-- ^ variable
+	| HsCon HsQName			-- ^ data constructor
+	| HsLit HsLiteral		-- ^ literal constant
+	| HsInfixApp HsExp HsQOp HsExp	-- ^ infix application
+	| HsApp HsExp HsExp		-- ^ ordinary application
+	| HsNegApp HsExp		-- ^ negation expression @-@ /exp/
+	| HsLambda SrcLoc [HsPat] HsExp -- ^ lambda expression
+	| HsLet [HsDecl] HsExp		-- ^ local declarations with @let@
+	| HsIf HsExp HsExp HsExp	-- ^ @if@ /exp/ @then@ /exp/ @else@ /exp/
+	| HsCase HsExp [HsAlt]		-- ^ @case@ /exp/ @of@ /alts/
+	| HsDo [HsStmt]			-- ^ @do@-expression:
+					-- the last statement in the list
 					-- should be an expression.
-	| HsTuple [HsExp]
-	| HsList [HsExp]
-	| HsParen HsExp
-	| HsLeftSection HsExp HsQOp
-	| HsRightSection HsQOp HsExp
+	| HsTuple [HsExp]		-- ^ tuple expression
+	| HsList [HsExp]		-- ^ list expression
+	| HsParen HsExp			-- ^ parenthesized expression
+	| HsLeftSection HsExp HsQOp	-- ^ left section @(@/exp/ /qop/@)@
+	| HsRightSection HsQOp HsExp	-- ^ right section @(@/qop/ /exp/@)@
 	| HsRecConstr HsQName [HsFieldUpdate]
+					-- ^ record construction expression
 	| HsRecUpdate HsExp [HsFieldUpdate]
-	| HsEnumFrom HsExp
-	| HsEnumFromTo HsExp HsExp
-	| HsEnumFromThen HsExp HsExp
+					-- ^ record update expression
+	| HsEnumFrom HsExp		-- ^ unbounded arithmetic sequence,
+					-- incrementing by 1
+	| HsEnumFromTo HsExp HsExp	-- ^ bounded arithmetic sequence,
+					-- incrementing by 1
+	| HsEnumFromThen HsExp HsExp	-- ^ unbounded arithmetic sequence,
+					-- with first two elements given
 	| HsEnumFromThenTo HsExp HsExp HsExp
-	| HsListComp HsExp [HsStmt]
+					-- ^ bounded arithmetic sequence,
+					-- with first two elements given
+	| HsListComp HsExp [HsStmt]	-- ^ list comprehension
 	| HsExpTypeSig SrcLoc HsExp HsQualType
+					-- ^ expression type signature
 	| HsAsPat HsName HsExp		-- ^ patterns only
 	| HsWildCard			-- ^ patterns only
 	| HsIrrPat HsExp		-- ^ patterns only
  deriving (Eq,Show)
 
+-- | A pattern, to be matched against a value.
 data HsPat
-	= HsPVar HsName
-	| HsPLit HsLiteral
-	| HsPNeg HsPat
+	= HsPVar HsName			-- ^ variable
+	| HsPLit HsLiteral		-- ^ literal constant
+	| HsPNeg HsPat			-- ^ negated pattern
 	| HsPInfixApp HsPat HsQName HsPat
-	| HsPApp HsQName [HsPat]
-	| HsPTuple [HsPat]
-	| HsPList [HsPat]
-	| HsPParen HsPat
-	| HsPRec HsQName [HsPatField]
-	| HsPAsPat HsName HsPat
-	| HsPWildCard
-	| HsPIrrPat HsPat
+					-- ^ pattern with infix data constructor
+	| HsPApp HsQName [HsPat]	-- ^ data constructor and argument
+					-- patterns
+	| HsPTuple [HsPat]		-- ^ tuple pattern
+	| HsPList [HsPat]		-- ^ list pattern
+	| HsPParen HsPat		-- ^ parenthesized pattern
+	| HsPRec HsQName [HsPatField]	-- ^ labelled pattern
+	| HsPAsPat HsName HsPat		-- ^ @\@@-pattern
+	| HsPWildCard			-- ^ wildcard pattern (@_@)
+	| HsPIrrPat HsPat		-- ^ irrefutable pattern (@~@)
  deriving (Eq,Show)
 
+-- | An /fpat/ in a labeled record pattern.
 data HsPatField
 	= HsPFieldPat HsQName HsPat
  deriving (Eq,Show)
@@ -292,24 +331,30 @@ data HsPatField
 --   and /qual/ in a list comprehension.
 data HsStmt
 	= HsGenerator SrcLoc HsPat HsExp
-	| HsQualifier HsExp
-	| HsLetStmt [HsDecl]
+				-- ^ a generator /pat/ @<-@ /exp/
+	| HsQualifier HsExp	-- ^ an /exp/ by itself: in a @do@-expression,
+				-- an action whose result is discarded;
+				-- in a list comprehension, a guard expression
+	| HsLetStmt [HsDecl]	-- ^ local bindings
  deriving (Eq,Show)
 
--- | An /fbind/ in a labeled construction or update.
+-- | An /fbind/ in a labeled record construction or update expression.
 data HsFieldUpdate
 	= HsFieldUpdate HsQName HsExp
   deriving (Eq,Show)
 
+-- | An /alt/ in a @case@ expression.
 data HsAlt
 	= HsAlt SrcLoc HsPat HsGuardedAlts [HsDecl]
   deriving (Eq,Show)
 
 data HsGuardedAlts
-	= HsUnGuardedAlt HsExp
-	| HsGuardedAlts  [HsGuardedAlt]
+	= HsUnGuardedAlt HsExp		-- ^ @->@ /exp/
+	| HsGuardedAlts  [HsGuardedAlt]	-- ^ /gdpat/
   deriving (Eq,Show)
 
+-- | A guarded alternative @|@ /exp/ @->@ /exp/.
+-- The first expression will be Boolean-valued.
 data HsGuardedAlt
 	= HsGuardedAlt SrcLoc HsExp HsExp
   deriving (Eq,Show)
