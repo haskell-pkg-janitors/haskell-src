@@ -40,6 +40,8 @@ data PPLayout = PPOffsideRule	-- ^ classical layout
 type Indent = Int
 
 -- | Pretty-printing parameters.
+--
+-- /Note:/ the 'onsideIndent' must be positive and less than all other indents.
 data PPHsMode = PPHsMode {
 				-- | indentation of a class or instance
 		classIndent :: Indent,
