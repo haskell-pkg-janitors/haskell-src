@@ -1,6 +1,6 @@
 -- The public face of Template Haskell
 
-module TH(
+module Language.Haskell.TH(
 	-- The monad and its operations
 	Q, runQ, 
 	report,		-- :: Bool -> String -> Q ()
