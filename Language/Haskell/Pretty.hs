@@ -521,7 +521,7 @@ instance Pretty HsExp where
 	pretty (HsEnumFromTo from to) =
 		bracketList [pretty from, text "..", pretty to]
 	pretty (HsEnumFromThen from thenE) =
-		bracketList [pretty from <> comma, pretty thenE]
+		bracketList [pretty from <> comma, pretty thenE, text ".."]
 	pretty (HsEnumFromThenTo from thenE to) =
 		bracketList [pretty from <> comma, pretty thenE,
 			     text "..", pretty to]
