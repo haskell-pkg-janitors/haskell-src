@@ -85,11 +85,6 @@ checkInsts (HsTyApp l t) ts = checkInsts l (t:ts)
 checkInsts (HsTyCon c)   ts = return (c,ts)
 checkInsts _ _ = fail "Illegal instance declaration"
 
-checkInst :: HsType -> P ()
-checkInst (HsTyApp l _) = checkInst l
-checkInst (HsTyVar _)   = fail "Illegal instance declaration"
-checkInst _             = return ()
-
 -----------------------------------------------------------------------------
 -- Checking Patterns.
 
