@@ -320,6 +320,9 @@ lexCon qual cont s loc y x =
     just_a_conid
 	| null qual = forward l_con (ConId con) rest
 	| otherwise = forward l_con (QConId (qual,con)) rest
+    qual'
+	| null qual = con
+	| otherwise = qual ++ '.':con
   in
   case rest of
     '.':c1:s1
@@ -332,12 +335,9 @@ lexCon qual cont s loc y x =
 	case lookup id reserved_ids of
 	   -- cannot qualify a reserved word
 	   Just keyword -> just_a_conid
-	   Nothing -> forward (l_con+1+l_id) (QVarId (con, id)) rest1
+	   Nothing -> forward (l_con+1+l_id) (QVarId (qual', id)) rest1
 
      | isUpper c1 ->	-- qualified conid?
-        let qual' | null qual = con
-		  | otherwise = qual ++ '.':con
-	in
 	lexCon qual' cont (c1:s1) loc y (x+l_con+1)
 
      | isSymbol c1 ->	-- qualified symbol?
@@ -351,9 +351,9 @@ lexCon qual cont s loc y x =
 	    Just _  -> just_a_conid
 	    Nothing -> case c1 of
 			':' -> forward (l_con+1+l_sym)
-				(QConSym (con, sym)) rest1
+				(QConSym (qual', sym)) rest1
 			_   -> forward (l_con+1+l_sym)
-				(QVarSym (con, sym)) rest1
+				(QVarSym (qual', sym)) rest1
 
     _ -> just_a_conid -- not a qualified thing
 
