@@ -19,7 +19,7 @@ module Language.Haskell.Pretty (
 		-- * Pretty-printing styles (from @Text.PrettyPrint.HughesPJ@)
 		P.Style(..), P.style, P.Mode(..),
 		-- * Haskell formatting modes
-		PPHsMode(..), PPLayout(..), defaultMode) where
+		PPHsMode(..), Indent, PPLayout(..), defaultMode) where
 
 import Language.Haskell.Syntax
 
