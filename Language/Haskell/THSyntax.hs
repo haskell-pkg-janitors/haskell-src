@@ -43,15 +43,15 @@ gensym s = do { n <- readIORef counter
 class Lift t where
   lift :: t -> Exp
   
-instance Lift Int where
-  lift = Lit . Int
+instance Lift Integer where
+  lift = Lit . Integer
 
 instance Lift Char where
   lift = Lit . Char
 
 ------------------------------------------------------
 
-data Lit = Int Int 
+data Lit = Integer Integer 
 	 | Char Char 
 	 | String String 
 	 | Rational Rational 
@@ -180,9 +180,10 @@ runP x = x
 
 
 
+
 -------------------- Lowercase pattern syntax functions ---
 
-intL      = Int
+integerL  = Integer
 charL     = Char
 stringL   = String
 rationalL = Rational
@@ -492,7 +493,7 @@ pprRhs eq (Normal e) = (if eq then text "=" else text "->")
 
 ------------------------------
 pprLit :: Precedence -> Lit -> Doc
-pprLit _ (Int i) = int i
+pprLit _ (Integer i) = integer i
 pprLit _ (Char c) = char c
 pprLit _ (String s) = text s
 pprLit i (Rational rat) = parensIf (i > noPrec) $ text $ show rat
