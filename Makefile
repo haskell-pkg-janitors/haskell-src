@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# $Id: Makefile,v 1.9 2003/11/06 17:10:00 simonpj Exp $
+# $Id: Makefile,v 1.10 2003/11/10 15:32:44 simonmar Exp $
 
 TOP=..
 include $(TOP)/mk/boilerplate.mk
@@ -11,7 +11,7 @@ PACKAGE_DEPS = base
 Language/Haskell/Parser_HC_OPTS += -Onot -fno-warn-incomplete-patterns
 Language/Haskell/THSyntax_HC_OPTS += -fglasgow-exts
 
-SRC_HADDOCK_OPTS += -t "Haskell Core Libraries (haskell-src package)" \
+SRC_HADDOCK_OPTS += -t "Haskell Hierarchical Libraries ($(PACKAGE) package)" \
 	-p prologue.txt
 
 include $(TOP)/mk/target.mk
