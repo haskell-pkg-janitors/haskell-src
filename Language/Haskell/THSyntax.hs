@@ -102,7 +102,14 @@ data Exp
   | Con String                           -- data T1 = C1 t1 t2; p = {C1} e1 e2  
   | Lit Lit                              -- { 5 or 'c'}
   | App Exp Exp                          -- { f x }
-  | Infix (Maybe Exp) String (Maybe Exp) -- {x + y} or {(x+)} or {(+ x)} or {(+)}
+
+  | Infix (Maybe Exp) Exp (Maybe Exp)    -- {x + y} or {(x+)} or {(+ x)} or {(+)}
+	-- It's a bit gruesome to use an Exp as the
+	-- operator, but how else can we distinguish
+	-- constructors from non-constructors?
+	-- Maybe there should be a var-or-con type?
+	-- Or maybe we should leave it to the String itself?
+
   | Lam [Pat] Exp                        -- { \ p1 p2 -> e }
   | Tup [Exp]                            -- { (e1,e2) }  
   | Cond Exp Exp Exp                     -- { if e1 then e2 else e3 }
@@ -282,11 +289,11 @@ lit c = return (Lit c)
 app :: Expr -> Expr -> Expr
 app x y = do { a <- x; b <- y; return (App a b)}
 
-infixE :: Maybe Expr -> String -> Maybe Expr -> Expr
-infixE (Just x) s (Just y) = do { a <- x; b <- y; return(Infix (Just a) s (Just b))}
-infixE Nothing  s (Just y) = do { b <- y; return(Infix Nothing s (Just b))}
-infixE (Just x) s Nothing  = do { a <- x; return(Infix (Just a) s Nothing)}
-infixE Nothing  s Nothing  = return(Infix Nothing s Nothing)
+infixE :: Maybe Expr -> Expr -> Maybe Expr -> Expr
+infixE (Just x) s (Just y) = do { a <- x; s' <- s; b <- y; return (Infix (Just a) s' (Just b))}
+infixE Nothing  s (Just y) = do { s' <- s; b <- y; return (Infix Nothing s' (Just b))}
+infixE (Just x) s Nothing  = do { a <- x; s' <- s; return (Infix (Just a) s' Nothing)}
+infixE Nothing  s Nothing  = do { s' <- s; return (Infix Nothing s' Nothing) }
 
 infixApp x y z = infixE (Just x) y (Just z)
 sectionL x y = infixE (Just x) y Nothing
@@ -484,10 +491,10 @@ pprExpI i (App e1 e2) = parensIf (i >= appPrec) $ pprExpI opPrec e1
                                         <+> pprExpI appPrec e2
 pprExpI i (Infix (Just e1) op (Just e2))
  = parensIf (i >= opPrec) $ pprExpI opPrec e1
-                          <+> text op
+                          <+> pprExp op
                           <+> pprExpI opPrec e2
 pprExpI _ (Infix me1 op me2) = parens $ pprMaybeExp noPrec me1
-                                    <+> text op
+                                    <+> pprExp op
                                     <+> pprMaybeExp noPrec me2
 pprExpI i (Lam ps e) = parensIf (i > noPrec) $ char '\\'
                                        <> hsep (map pprPat ps)
