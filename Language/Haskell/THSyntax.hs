@@ -176,6 +176,8 @@ data Dec
   | Val Pat RightHandSide [Dec]         -- { p = b where decs }
   | Data Cxt String [String] 
          [Con] [String]                 -- { data Cxt x => T x = A x | B (T x) deriving (Z,W)}
+  | Newtype Cxt String [String] 
+         Con [String]                   -- { newtype Cxt x => T x = A (B x) deriving (Z,W)}
   | TySyn String [String] Typ           -- { type T x = (x,x) }
   | Class Cxt String [String] [Dec]     -- { class Eq a => Ord a where ds }
   | Instance Cxt Typ [Dec]              -- { instance Show w => Show [w] where ds }
@@ -416,6 +418,13 @@ dataD ctxt tc tvs cons derivs =
     ctxt1 <- ctxt
     cons1 <- sequence cons
     return (Data ctxt1 tc tvs cons1 derivs)
+
+newtypeD :: CxtQ -> String -> [String] -> ConQ -> [String] -> DecQ
+newtypeD ctxt tc tvs con derivs =
+  do
+    ctxt1 <- ctxt
+    con1 <- con
+    return (Newtype ctxt1 tc tvs con1 derivs)
 
 classD :: CxtQ -> String -> [String] -> [DecQ] -> DecQ
 classD ctxt cls tvs decs =
@@ -678,6 +687,15 @@ pprDec (Data cxt t xs cs ds) = text "data"
     where pref :: [Doc] -> [Doc]
           pref [] = [char '='] -- Can't happen in H98
           pref (d:ds) = (char '=' <+> d):map (char '|' <+>) ds
+pprDec (Newtype cxt t xs c ds) = text "newtype"
+                       <+> pprCxt cxt
+                       <+> text t <+> hsep (map text xs)
+                       <+> char '=' <+> pprCon c
+                        $$ if null ds
+                           then empty
+                           else nest nestDepth
+                              $ text "deriving"
+                            <+> parens (hsep $ punctuate comma $ map text ds)
 pprDec (Class cxt c xs ds) = text "class" <+> pprCxt cxt
                          <+> text c <+> hsep (map text xs)
                           $$ where_clause ds
