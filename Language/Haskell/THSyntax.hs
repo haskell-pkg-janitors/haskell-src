@@ -92,8 +92,12 @@ instance Lift a => Lift [a] where
   lift xs = listE (map lift xs)
 
 -- TH has a special form for literal strings,
--- which we should take advantage of
-{-# RULES "TH:liftString" forall s. lift s = litE (StringL s) #-}
+-- which we should take advantage of.
+-- NB: the lhs of the rule has no args, so that
+--     the rule will apply to a 'lift' all on its own
+--     which happens to be the way the type checker 
+--     creates it.
+{-# RULES "TH:liftString" lift = \s -> litE (StringL s) #-}
 
 
 
