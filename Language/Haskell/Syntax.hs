@@ -37,7 +37,7 @@ module Language.Haskell.Syntax (
     HsLiteral(..),
     -- * Variables, Constructors and Operators
     Module(..), HsQName(..), HsName(..), HsQOp(..), HsOp(..),
-    HsCName(..),
+    HsSpecialCon(..), HsCName(..),
 
     -- * Builtin names
 
@@ -46,7 +46,7 @@ module Language.Haskell.Syntax (
     -- ** Main function of a program
     main_name,
     -- ** Constructors
-    unit_con_name, tuple_con_name,
+    unit_con_name, tuple_con_name, list_cons_name,
     unit_con, tuple_con,
     -- ** Special identifiers
     as_name, qualified_name, hiding_name, minus_name, pling_name,
@@ -69,29 +69,49 @@ data SrcLoc = SrcLoc {
 newtype Module = Module String
   deriving (Eq,Ord,Show)
 
+-- | Constructors with special syntax.
+-- These names are never qualified, and always refer to builtin type or
+-- data constructors.
+
+data HsSpecialCon
+	= HsUnitCon		-- ^ Unit type and data constructor @()@
+	| HsListCon		-- ^ List type constructor @[]@
+	| HsFunCon		-- ^ Function type constructor @->@
+	| HsTupleCon Int	-- ^ /n/-ary tuple type and data
+				--   constructors @(,)@ etc
+	| HsCons		-- ^ list data constructor @:@
+  deriving (Eq,Ord)
+
+instance Show HsSpecialCon where
+	show HsUnitCon = "()"
+	show HsListCon = "[]"
+	show HsFunCon = "->"
+	show (HsTupleCon n) = "(" ++ replicate (n-1) ',' ++ ")"
+	show HsCons = ":"
+
 -- |This type is used to represent qualified variables, and also
 -- qualified constructors.
 data HsQName
 	= Qual Module HsName
 	| UnQual HsName
+	| Special HsSpecialCon
   deriving (Eq,Ord)
 
 instance Show HsQName where
    showsPrec _ (Qual (Module m) s) =
 	showString m . showString "." . shows s
    showsPrec _ (UnQual s) = shows s
+   showsPrec _ (Special s) = shows s
 
 -- |This type is used to represent variables, and also constructors.
 data HsName
 	= HsIdent String	-- ^ /varid/ or /conid/.
 	| HsSymbol String	-- ^ /varsym/ or /consym/
-	| HsSpecial String
   deriving (Eq,Ord)
 
 instance Show HsName where
    showsPrec _ (HsIdent s) = showString s
    showsPrec _ (HsSymbol s) = showString s
-   showsPrec _ (HsSpecial s) = showString s
 
 -- | Qualified operators.
 data HsQOp
@@ -332,10 +352,13 @@ main_name :: HsName
 main_name	      = HsIdent "main"
 
 unit_con_name :: HsQName
-unit_con_name	      = Qual prelude_mod (HsSpecial "()")
+unit_con_name	      = Special HsUnitCon
 
 tuple_con_name :: Int -> HsQName
-tuple_con_name i      = Qual prelude_mod (HsSpecial ("("++replicate i ','++")"))
+tuple_con_name i      = Special (HsTupleCon (i+1))
+
+list_cons_name :: HsQName
+list_cons_name	      = Special HsCons
 
 unit_con :: HsExp
 unit_con	      = HsCon unit_con_name
@@ -352,8 +375,8 @@ pling_name	      = HsSymbol "!"
 
 unit_tycon_name, fun_tycon_name, list_tycon_name :: HsQName
 unit_tycon_name       = unit_con_name
-fun_tycon_name        = Qual prelude_mod (HsSymbol "->")
-list_tycon_name       = Qual prelude_mod (HsIdent "[]")
+fun_tycon_name        = Special HsFunCon
+list_tycon_name       = Special HsListCon
 
 tuple_tycon_name :: Int -> HsQName
 tuple_tycon_name i    = tuple_con_name i

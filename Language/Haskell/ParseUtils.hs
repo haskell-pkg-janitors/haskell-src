@@ -273,6 +273,7 @@ checkMethodDef _ = return ()
 checkUnQual :: HsQName -> P HsName
 checkUnQual (Qual _ _) = fail "Illegal qualified name"
 checkUnQual (UnQual n) = return n
+checkUnQual (Special _) = fail "Illegal special name"
 
 -----------------------------------------------------------------------------
 -- Miscellaneous utilities

@@ -432,8 +432,6 @@ instance Pretty HsType where
 		| otherwise = parensIf (p > 1) $
 			myFsep [pretty a, prettyPrec 2 b]
 	prettyPrec _ (HsTyVar name) = pretty name
-	-- special case
-	prettyPrec _ (HsTyCon (Qual mod n)) | mod == prelude_mod = pretty n
 	prettyPrec _ (HsTyCon name) = pretty name
 
 ------------------------- Expressions -------------------------
@@ -583,10 +581,9 @@ instance Pretty HsQName where
 	pretty name = parensIf (isSymbolName (getName name)) (ppHsQName name)
 
 ppHsQName :: HsQName -> Doc
-ppHsQName (UnQual name)			= ppHsName name
-ppHsQName (Qual mod name)
-	| mod == prelude_mod && isSpecialName name = ppHsName name
-	| otherwise = pretty mod <> char '.' <> ppHsName name
+ppHsQName (UnQual name)   = ppHsName name
+ppHsQName (Qual mod name) = pretty mod <> char '.' <> ppHsName name
+ppHsQName (Special sym)   = text (show sym)
 
 instance Pretty HsOp where
 	pretty (HsVarOp n) = ppHsNameInfix n
@@ -611,13 +608,12 @@ isSymbolName :: HsName -> Bool
 isSymbolName (HsSymbol _) = True
 isSymbolName _ = False
 
-isSpecialName :: HsName -> Bool
-isSpecialName (HsSpecial _) = True
-isSpecialName _ = False
-
 getName :: HsQName -> HsName
 getName (UnQual s) = s
 getName (Qual _ s) = s
+getName (Special HsCons) = HsSymbol ":"
+getName (Special HsFunCon) = HsSymbol "->"
+getName (Special s) = HsIdent (show s)
 
 ppHsContext :: HsContext -> Doc
 ppHsContext []      = empty

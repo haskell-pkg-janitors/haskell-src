@@ -74,6 +74,7 @@ Symbols
 Reserved operators
 
 >	'..'	{ DotDot }
+>	':'	{ Colon }
 >	'::'	{ DoubleColon }
 >	'='	{ Equals }
 >	'\\'	{ Backslash }
@@ -679,7 +680,7 @@ Variables, Constructors and Operators.
 
 > qcon	:: { HsQName }
 >	: qconid		{ $1 }
->	| '(' qconsym ')'	{ $2 }
+>	| '(' gconsym ')'	{ $2 }
 
 > varop	:: { HsName }
 >	: varsym		{ $1 }
@@ -698,7 +699,7 @@ Variables, Constructors and Operators.
 >	| '`' conid '`'		{ $2 }
 
 > qconop :: { HsQName }
->	: qconsym		{ $1 }
+>	: gconsym		{ $1 }
 >	| '`' qconid '`'	{ $2 }
 
 > op	:: { HsOp }
@@ -712,6 +713,13 @@ Variables, Constructors and Operators.
 > qopm	:: { HsQOp }
 >	: qvaropm		{ HsQVarOp $1 }
 >	| qconop		{ HsQConOp $1 }
+
+> gconsym :: { HsQName }
+>	: ':'			{ list_cons_name }
+>	| qconsym		{ $1 }
+
+-----------------------------------------------------------------------------
+Identifiers and Symbols
 
 > qvarid :: { HsQName }
 >	: varid			{ UnQual $1 }
