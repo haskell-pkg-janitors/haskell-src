@@ -77,7 +77,6 @@ data Exp
   | Lit Lit                              -- { 5 or 'c'}
   | App Exp Exp                          -- { f x }
   | Infix (Maybe Exp) String (Maybe Exp) -- {x + y} or {(x+)} or {(+ x)} or {(+)}
-  | Neg Exp				 -- { -e }
   | Lam [Pat] Exp                        -- { \ p1 p2 -> e }
   | Tup [Exp]                            -- { (e1,e2) }  
   | Cond Exp Exp Exp                     -- { if e1 then e2 else e3 }
@@ -261,9 +260,6 @@ infixApp x y z = infixE (Just x) y (Just z)
 sectionL x y = infixE (Just x) y Nothing
 sectionR x y = infixE Nothing x (Just y)
 
-neg :: Expr -> Expr
-neg = liftM Neg
-
 from :: Expr -> Expr
 from x = do { a <- x; return (ArithSeq (From a)) }  
 
@@ -435,7 +431,6 @@ pprExpI i (Infix (Just e1) op (Just e2))
 pprExpI _ (Infix me1 op me2) = parens $ pprMaybeExp noPrec me1
                                     <+> text op
                                     <+> pprMaybeExp noPrec me2
-pprExpI i (Neg e) = parensIf (i > noPrec) $ char '-' <> pprExp e
 pprExpI i (Lam ps e) = parensIf (i > noPrec) $ char '\\'
                                        <> hsep (map pprPat ps)
                                       <+> text "->" <+> pprExp e
