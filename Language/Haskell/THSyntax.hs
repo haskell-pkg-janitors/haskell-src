@@ -82,21 +82,21 @@ data Statement p e d
 data DotDot e = From e | FromThen e e | FromTo e e | FromThenTo e e e 
   
 data Dec 
-  = Fun String [Clause Pat Exp Dec]      -- { f p1 p2 = b where decs }
-  | Val Pat (RightHandSide Exp) [Dec]    -- { p = b where decs }
+  = Fun String [Clause Pat Exp Dec]     -- { f p1 p2 = b where decs }
+  | Val Pat (RightHandSide Exp) [Dec]   -- { p = b where decs }
   | Data String [String] 
-         [Constr] [String]               -- { data T x = A x | B (T x) deriving (Z,W)}
-  | Class Context String [String] [Dec]  -- { class Eq a => Eq [a] where ds }
-  | Instance Context Typ [Dec]   	 -- { instance Show w => Show [w] where ds }
-  | Proto String Typ                     -- { length :: [a] -> Int }
+         [Con] [String]         	-- { data T x = A x | B (T x) deriving (Z,W)}
+  | Class Cxt String [String] [Dec]	-- { class Eq a => Ord a where ds }
+  | Instance Cxt Typ [Dec]   	 	-- { instance Show w => Show [w] where ds }
+  | Proto String Typ                    -- { length :: [a] -> Int }
 
-type Context = [Typ]	-- (Eq a, Ord b)
+type Cxt = [Typ]	-- (Eq a, Ord b)
 
-data Constr = Constr String [Typ]
+data Con = Constr String [Typ]
 
 data Program = Program [ Dec ] 
 
-data Tag = Tuple Int | Arrow | List | Name String deriving Eq
+data Tag = Tuple Int | Arrow | List | TconName String deriving Eq
 
 data Typ = Tvar String           -- a
          | Tcon Tag              -- T or [] or (->) or (,,) etc
@@ -107,8 +107,10 @@ data Typ = Tvar String           -- a
 
 type Expr = Q Exp
 type Decl = Q Dec
+type Cons = Q Con
 type Type = Typ		-- No need for Q here
 type Patt = Pat		-- Ditto
+type Ctxt = Cxt
 
 type Mat  = Match Pat Exp Dec
 type Mtch = Q Mat
@@ -149,17 +151,6 @@ ptilde = Ptilde
 paspat = Paspat
 pwild = Pwild
 
-alpha env s = case lookup s env of
-               Just x -> return(Var x)
-               Nothing -> return(Var s)
-
---rho :: Qenv -> String -> Expr
-rho e s = 
-  case lookup s e of 
-    Just z -> return(Var z)
-    Nothing -> return(Var s)
-    
-    
 
 --------------------------------------------------------------------------------
 -- 	Stmt
@@ -289,6 +280,49 @@ fun nm cs =
     ; return (Fun nm cs1)
     }
 
+dataD :: String -> [String] -> [Cons] -> [String] -> Decl
+dataD tc tvs cons derivs
+  = do { cons1 <- sequence cons; return (Data tc tvs cons1 derivs) }
+
+classD :: Ctxt -> String -> [String] -> [Decl] -> Decl
+classD cxt cls tvs decs
+  = do { decs1 <- sequence decs; return (Class cxt cls tvs decs1) }
+
+inst :: Cxt -> Type -> [Decl] -> Decl
+inst cxt ty decs
+  = do { decs1 <- sequence decs; return (Instance cxt ty decs1) }
+
+proto :: String -> Type -> Decl
+proto fun ty = return (Proto fun ty)
+
+constr :: String -> [Type] -> Cons
+constr con tys = return (Constr con tys)
+
+
+--------------------------------------------------------------------------------
+-- 	Type
+
+tvar :: String -> Type
+tvar = Tvar
+
+tcon :: Tag -> Type
+tcon = Tcon
+
+tapp :: Type -> Type -> Type
+tapp = Tapp
+
+arrowTyCon :: Type
+arrowTyCon = Tcon Arrow
+
+listTyCon :: Type
+listTyCon = Tcon List
+
+tupleTyCon :: Int -> Type
+tupleTyCon i = Tcon (Tuple i)
+
+namedTyCon :: String -> Type
+namedTyCon s = Tcon (TconName s)
+
 --------------------------------------------------------------
 -- useful helper functions
 
@@ -307,6 +341,10 @@ rename (Paspat s p) =
 rename Pwild = return([],Pwild)
 
 genpat p = do { (env,p2) <- rename p; return(alpha env,p2) }
+
+alpha env s = case lookup s env of
+               Just x -> return(Var x)
+               Nothing -> return(Var s)
 
 --genPE s n = [ (pvar x, var x) | i <- [1..n], let x = s ++ show i ]
 
