@@ -327,7 +327,8 @@ listExp es = do { es1 <- sequence es; return (ListExp es1)}
 sigExp :: Expr -> Type -> Expr
 sigExp e t = do { e1 <- e; t1 <- t; return (SigExp e1 t1) }
 
-string s = listExp(map (lit . Char) s)
+string :: String -> Expr
+string = lit . String
 
 --------------------------------------------------------------------------------
 -- 	Decl
