@@ -364,7 +364,7 @@ lexChar cont s loc y x = case s of
                     c:s    -> charEnd c s loc y (x+1)
                     []     -> error "Internal error: lexChar"
 
-  where charEnd c ('\'':s) = \loc x -> cont (Character c) s loc (x+1)
+  where charEnd c ('\'':s) = \loc y x -> cont (Character c) s loc y (x+1)
         charEnd c s = parseError "Improperly terminated character constant" s
 
 lexString :: (Token -> P a) -> P a
