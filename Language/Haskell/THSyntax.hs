@@ -1,4 +1,5 @@
 module Language.Haskell.THSyntax 
+-- FIXME: *urgh* we don't really want to export stuff like `counter'  -=chak
 where
 
 import Monad            ( liftM, sequence )
@@ -13,6 +14,9 @@ import Char (toLower)
 -- The quotation monad as IO
 
 type Q a = IO a
+  -- FIXME: Not nice, as we can't export Q abstractly this way.  Well, as
+  --   there isn't even an export list, it doesn't matter much at the moment
+  --   anyway *sigh*  -=chak
 
 qIO :: IO a -> Q a
 qIO = id
@@ -20,6 +24,12 @@ qIO = id
 runQ :: Q a -> IO a
 runQ = id
 
+-- FIXME: What is the point of `returnQ', `bindQ, and `sequenceQ'?  As long as
+--   Q is an instance of Monad, we get all this for free.  -=chak
+--   Note: if this is to have these functions available in DsMeta, I think,
+--   they should be moved to a different module (ie, separate the user-level
+--   interface to THSyntax from the GHC-internal one)
+--
 returnQ :: a -> Q a
 returnQ = return
 
@@ -42,6 +52,8 @@ gensym s = do { n <- readIORef counter
 
 class Lift t where
   lift :: t -> Exp
+  -- FIXME: This is different from the paper where the result type is is
+  --   Expr.  What is right?  -=chak
   
 instance Lift Integer where
   lift = Lit . Integer
@@ -135,12 +147,15 @@ data Con = Constr String [Typ]
 data Program = Program [ Dec ] 
              deriving( Show )
 
+-- FIXME: Why this special status for "List" (even tuples might be handled
+--	  differently)? -=chak
 data Tag = Tuple Int | Arrow | List | TconName String
          deriving (Eq, Show)
 
-data Typ = Tvar String           -- a
-         | Tcon Tag              -- T or [] or (->) or (,,) etc
-         | Tapp Typ Typ          -- T a b
+data Typ = TForall [String] Cxt Typ  -- forall <vars>. <ctxt> -> <type>
+	 | Tvar String               -- a
+         | Tcon Tag                  -- T or [] or (->) or (,,) etc
+         | Tapp Typ Typ              -- T a b
  	 deriving( Show )
  
 ---------------------------------------------------
@@ -149,9 +164,11 @@ data Typ = Tvar String           -- a
 type Expr = Q Exp
 type Decl = Q Dec
 type Cons = Q Con
-type Type = Typ		-- No need for Q here
-type Patt = Pat		-- Ditto
-type Ctxt = Cxt
+type Type = Q Typ
+type Patt = Pat		-- No need for Q here
+  -- FIXME: I think it is more annoying having an exception here, rather than
+  --   wrapping Pat unnecessarily into Q  -=chak
+type Ctxt = Q Cxt
 
 type Mat  = Match Pat Exp Dec
 type Mtch = Q Mat
@@ -300,7 +317,7 @@ listExp :: [Expr] -> Expr
 listExp es = do { es1 <- sequence es; return (ListExp es1)}
 
 sigExp :: Expr -> Type -> Expr
-sigExp e t = do { e1 <- e; let { t1 = t}; return (SigExp e1 t1) }
+sigExp e t = do { e1 <- e; t1 <- t; return (SigExp e1 t1) }
 
 string s = listExp(map (lit . Char) s)
 
@@ -325,43 +342,63 @@ dataD tc tvs cons derivs
   = do { cons1 <- sequence cons; return (Data tc tvs cons1 derivs) }
 
 classD :: Ctxt -> String -> [String] -> [Decl] -> Decl
-classD cxt cls tvs decs
-  = do { decs1 <- sequence decs; return (Class cxt cls tvs decs1) }
+classD ctxt cls tvs decs =
+  do 
+    decs1 <- sequence decs
+    ctxt1 <- ctxt
+    return $ Class ctxt1 cls tvs decs1
 
-inst :: Cxt -> Type -> [Decl] -> Decl
-inst cxt ty decs
-  = do { decs1 <- sequence decs; return (Instance cxt ty decs1) }
+inst :: Ctxt -> Type -> [Decl] -> Decl
+inst ctxt ty decs =
+  do 
+    ctxt1 <- ctxt
+    decs1 <- sequence decs
+    ty1   <- ty
+    return $ Instance ctxt1 ty1 decs1
 
 proto :: String -> Type -> Decl
-proto fun ty = return (Proto fun ty)
+proto fun ty = liftM (Proto fun) $ ty
+
+ctxt :: [Type] -> Ctxt
+ctxt = sequence
 
 constr :: String -> [Type] -> Cons
-constr con tys = return (Constr con tys)
+constr con tys = liftM (Constr con) $ sequence tys
 
 
 --------------------------------------------------------------------------------
 -- 	Type
 
+tforall :: [String] -> Ctxt -> Type -> Type
+tforall tvars ctxt ty = do
+  do
+    ctxt1 <- ctxt
+    ty1   <- ty
+    return $ TForall tvars ctxt1 ty1
+
 tvar :: String -> Type
-tvar = Tvar
+tvar = return . Tvar
 
 tcon :: Tag -> Type
-tcon = Tcon
+tcon = return . Tcon
 
 tapp :: Type -> Type -> Type
-tapp = Tapp
+tapp t1 t2 = do
+	       t1' <- t1
+	       t2' <- t2
+	       return $ Tapp t1' t2'
 
 arrowTyCon :: Type
-arrowTyCon = Tcon Arrow
+arrowTyCon = return $ Tcon Arrow
 
 listTyCon :: Type
-listTyCon = Tcon List
+listTyCon = return $ Tcon List
 
 tupleTyCon :: Int -> Type
-tupleTyCon i = Tcon (Tuple i)
+tupleTyCon i = return $ Tcon (Tuple i)
 
 namedTyCon :: String -> Type
-namedTyCon s = Tcon (TconName s)
+namedTyCon s = return $ Tcon (TconName s)
 
 --------------------------------------------------------------
 -- useful helper functions
@@ -551,7 +588,14 @@ pprParendTyp (Tcon t) = pprTcon t
 pprParendTyp other    = parens (pprTyp other)
 
 pprTyp :: Typ -> Doc
-pprTyp ty = pprTyApp (split ty)
+pprTyp (TForall tvars ctxt ty) = 
+  text "forall" <+> hsep (map text tvars) <+> text "." <+> 
+  ctxtDoc <+> pprTyp ty
+  where
+    ctxtDoc | null ctxt = empty
+	    | otherwise = parens (sep (punctuate comma (map pprTyp ctxt))) <+>
+			  text "=>"
+pprTyp ty		       = pprTyApp (split ty)
 
 pprTyApp (Tcon Arrow, [arg1,arg2])
   = sep [pprTyp arg1 <+> text "->", pprTyp arg2]
@@ -576,9 +620,8 @@ pprTcon (TconName s) = text s
 split :: Typ -> (Typ, [Typ])	-- Split into function and args
 split t = go t []
 	where
-	  go (Tvar s) 	  args = (Tvar s, args)
-	  go (Tcon t) 	  args = (Tcon t, args)
 	  go (Tapp t1 t2) args = go t1 (t2:args)
+	  go ty		  args = (ty, args)
 
 ------------------------------
 pprCxt :: Cxt -> Doc
