@@ -20,8 +20,6 @@
 module Language.Haskell.Lexer (Token(..), lexer) where
 
 import Language.Haskell.ParseMonad
-import Language.Haskell.ParseUtils
-import Language.Haskell.Syntax(SrcLoc(..))
 
 import Data.Char
 import Data.Ratio
@@ -146,335 +144,367 @@ reserved_ids = [
 
 isIdent  c = isAlpha c || isDigit c || c == '\'' || c == '_'
 isSymbol c = elem c ":!#$%&*+./<=>?@\\^|-~"
-isWhite  c = elem c " \n\r\t\v\f"
 
-tAB_LENGTH = 8 :: Int
+matchChar :: Char -> String -> Lex a ()
+matchChar c msg = do
+	s <- getInput
+	if null s || head s /= c then fail msg else discard 1
 
--- The source location, (y,x), is the coordinates of the previous token.
--- col is the current column in the source file.  If col is 0, we are
--- somewhere at the beginning of the line before the first token.
-
--- Setting col to 0 is used in two places: just after emitting a virtual
--- close brace due to layout, so that next time through we check whether
--- we also need to emit a semi-colon, and at the beginning of the file,
--- to kick off the lexer.
+-- The top-level lexer.
+-- We need to know whether we are at the beginning of the line to decide
+-- whether to insert layout tokens.
 
 lexer :: (Token -> P a) -> P a
-lexer cont input (SrcLoc _ x) y col =
-        if col == 0
-           then tab y x True  input
-           else tab y col False input -- throw away old x
-  where
-   	-- move past whitespace and comments
-        tab y x bol [] =
-		cont EOF [] (SrcLoc y x) y x
-        tab y x bol ('\t':s) =
-        	tab y (nextTab x) bol s
-        tab y x bol ('\n':s) =
-                newLine cont s y
-        tab y x bol ('-':'-':s) =
-        	newLine cont (drop 1 (dropWhile (/= '\n') s)) y
-        tab y x bol ('{':'-':s) = nestedComment tab y x bol s
-        tab y x bol (c:s)
-        	| isWhite c = tab y (x+1) bol s
-        	| otherwise =
-			if bol	then lexBOL   cont (c:s) (SrcLoc y x) y x
-				else lexToken cont (c:s) (SrcLoc y x) y x
+lexer = runL $ do
+	bol <- checkBOL
+	bol <- lexWhiteSpace bol
+	startToken
+	if bol then lexBOL else lexToken
 
-	newLine cont s y =  tab (y+1) 1 True s
+lexWhiteSpace :: Bool -> Lex a Bool
+lexWhiteSpace bol = do
+	s <- getInput
+	case s of
+	    '{':'-':_ -> do
+		discard 2
+		bol <- lexNestedComment bol
+		lexWhiteSpace bol
+	    '-':'-':s | all (== '-') (takeWhile isSymbol s) -> do
+		lexWhile (== '-')
+		lexWhile (/= '\n')
+		lexNewline
+		lexWhiteSpace True
+	    '\n':_ -> do
+		lexNewline
+		lexWhiteSpace True
+	    '\t':_ -> do
+		lexTab
+		lexWhiteSpace bol
+	    c:_ | isSpace c -> do
+		discard 1
+		lexWhiteSpace bol
+	    _ -> return bol
 
-nextTab x = x + (tAB_LENGTH - (x-1) `mod` tAB_LENGTH)
+lexNestedComment :: Bool -> Lex a Bool
+lexNestedComment bol = do
+	s <- getInput
+	case s of
+	    '-':'}':_ -> discard 2 >> return bol
+	    '{':'-':_ -> do
+		discard 2
+		bol <- lexNestedComment bol	-- rest of the subcomment
+		lexNestedComment bol		-- rest of this comment
+	    '\t':_    -> lexTab >> lexNestedComment bol
+	    '\n':_    -> lexNewline >> lexNestedComment True
+	    _:_       -> discard 1 >> lexNestedComment bol
+	    []        -> fail "Unterminated nested comment"
 
 -- When we are lexing the first token of a line, check whether we need to
 -- insert virtual semicolons or close braces due to layout.
 
-lexBOL :: (Token -> P a) -> P a
-lexBOL cont s loc y x context =
-        if need_close_curly then
+lexBOL :: Lex a Token
+lexBOL = do
+	pos <- getOffside
+	case pos of
+	    LT -> do
                 -- trace "layout: inserting '}'\n" $
         	-- Set col to 0, indicating that we're still at the
         	-- beginning of the line, in case we need a semi-colon too.
         	-- Also pop the context here, so that we don't insert
         	-- another close brace before the parser can pop it.
-		cont VRightCurly s loc y 0 (tail context)
-        else if need_semi_colon then
-                --trace "layout: inserting ';'\n" $
-		cont SemiColon s loc y x context
-        else
-		lexToken cont s loc y x context
- where
-        need_close_curly =
-        	case context of
-        		[] -> False
-        		(i:_) -> case i of
-        			    NoLayout -> False
-        			    Layout n -> x < n
-        need_semi_colon =
-        	case context of
-        		[] -> False
-        		(i:_) -> case i of
-        			    NoLayout -> False
-        			    Layout n -> x == n
+		setBOL
+		popContextL "lexBOL"
+		return VRightCurly
+	    EQ ->
+                -- trace "layout: inserting ';'\n" $
+		return SemiColon
+	    GT ->
+		lexToken
 
-lexToken :: (Token -> P a) -> P a
-lexToken cont (c:s) loc y x =
-   -- trace ("lexer: y="++show y++" x="++show x++"\n") $
-   case c of
-        -- First the special symbols
-        '(' -> special LeftParen
-        ')' -> special RightParen
-        ',' -> special Comma
-        ';' -> special SemiColon
-        '[' -> special LeftSquare
-        ']' -> special RightSquare
-        '`' -> special BackQuote
-        '{' -> \ctxt -> special LeftCurly (NoLayout : ctxt)
-        '}' -> \stk -> case stk of
-                        (_:ctxt) -> special RightCurly ctxt -- pop context on '}'
-                        []       -> error "Internal error: empty context in lexToken"
+lexToken :: Lex a Token
+lexToken = do
+    s <- getInput
+    case s of
+        [] -> return EOF
 
-        '\'' -> lexChar cont s loc y (x+1)
-        '\"'{-"-} -> lexString cont s loc y (x+1)
+	'0':c:d:_ | toLower c == 'o' && isOctDigit d -> do
+			discard 2
+			n <- lexOctal
+			return (IntTok n)
+		  | toLower c == 'x' && isHexDigit d -> do
+			discard 2
+			n <- lexHexadecimal
+			return (IntTok n)
 
-        c | isLower c || c == '_' ->
-        	let
-        	    (idtail, rest) = span isIdent s
-        	    id = c:idtail
-        	    l_id = 1 + length idtail
-        	in
-        	case lookup id reserved_ids of
-        		Just keyword -> forward l_id keyword rest
-        		Nothing -> forward l_id (VarId id) rest
+	c:_ | isDigit c -> lexDecimalOrFloat
 
-          | isUpper c -> lexCon "" cont (c:s) loc y x
+	    | isUpper c -> lexConIdOrQual ""
 
-          | isSymbol c ->
-        	let
-        	    (symtail, rest) = span isSymbol s
-        	    sym = c : symtail
-        	    l_sym = 1 + length symtail
-        	in
-        	case lookup sym reserved_ops of
-        	    Just t  -> forward l_sym t rest
-        	    Nothing -> case c of
-        			':' -> forward l_sym (ConSym sym) rest
-        			_   -> forward l_sym (VarSym sym) rest
+	    | isLower c || c == '_' -> do
+		id <- lexWhile isIdent
+		return $ case lookup id reserved_ids of
+			Just keyword -> keyword
+			Nothing -> VarId id
 
-          | isDigit c ->
-		case (c:s) of
-		    ('0':o:d:r) | toLower o == 'o' && isOctDigit d ->
-			let (ds,rest) = span isOctDigit r in
-			forward (3+length ds) (IntTok (parseInteger 8 (d:ds))) rest
-		    ('0':x:d:r) | toLower x == 'x' && isHexDigit d ->
-			let (ds,rest) = span isHexDigit r in
-			forward (3+length ds) (IntTok (parseInteger 16 (d:ds))) rest
-        	    _ ->
-			let (ds,rest) = span isDigit s in
-        		case rest of
-        		    ('.':rest2@(c2:_)) | isDigit c2 ->
-				let
-				    (frac, rest3) = span isDigit rest2
-				    decimals = length frac
-				    num = parseInteger 10 (c:ds ++ frac)
-				in
-				lexFloatESignExp num decimals rest3
-					(length ds + 2 + decimals)
-                    	    _ -> forward (1+length ds) (IntTok (parseInteger 10 (c:ds))) rest
+	    | isSymbol c -> do
+		sym <- lexWhile isSymbol
+		return $ case lookup sym reserved_ops of
+			Just t  -> t
+			Nothing -> case c of
+			    ':' -> ConSym sym
+			    _   -> VarSym sym
 
-          | otherwise ->
-        	parseError ("illegal character \'" ++ show c ++ "\'\n")
-			  s loc y x
+	    | otherwise -> do
+		discard 1
+		case c of
 
- where special t = forward 1 t s
-       forward n t s = cont t s loc y (x+n)
+		    -- First the special symbols
+		    '(' ->  return LeftParen
+		    ')' ->  return RightParen
+		    ',' ->  return Comma
+		    ';' ->  return SemiColon
+		    '[' ->  return LeftSquare
+		    ']' ->  return RightSquare
+		    '`' ->  return BackQuote
+		    '{' -> do
+			    pushContextL NoLayout
+			    return LeftCurly
+		    '}' -> do
+			    popContextL "lexToken"
+			    return RightCurly
 
-       lexFloatESignExp num decimals ('e':r) n =
-		lexFloatSignExp num decimals r (n+1)
-       lexFloatESignExp num decimals ('E':r) n =
-		lexFloatSignExp num decimals r (n+1)
-       lexFloatESignExp num decimals r       n =
-		forward n (FloatTok ((num%1) / 10^^decimals)) r
+		    '\'' -> do
+			    c <- lexChar
+			    matchChar '\'' "Improperly terminated character constant"
+			    return (Character c)
 
-       lexFloatSignExp num decimals ('+':r) n =
-		lexFloatExp num decimals   1  r (n+1)
-       lexFloatSignExp num decimals ('-':r) n =
-		lexFloatExp num decimals (-1) r (n+1)
-       lexFloatSignExp num decimals r       n =
-		lexFloatExp num decimals   1  r  n
+		    '"' ->  lexString
 
-       lexFloatExp num decimals sign r n = case span isDigit r of
-		("", _ ) -> parseError "Float with missing exponent" r loc y (x+n)
-		(ds, r2) -> let exponent = sign*parseInteger 10 ds - toInteger decimals in
-			forward (n+length ds) (FloatTok ((num%1) * 10^^exponent)) r2
+		    _ ->    fail ("Illegal character \'" ++ show c ++ "\'\n")
 
-lexToken _ _ _ _ _ = error "Internal error: empty input in lexToken"
+lexDecimalOrFloat :: Lex a Token
+lexDecimalOrFloat = do
+	ds <- lexWhile isDigit
+	rest <- getInput
+	case rest of
+	    ('.':d:_) | isDigit d -> do
+		discard 1
+		frac <- lexWhile isDigit
+		let num = parseInteger 10 (ds ++ frac)
+		    decimals = toInteger (length frac)
+		exponent <- do
+			rest2 <- getInput
+			case rest2 of
+			    'e':_ -> lexExponent
+			    'E':_ -> lexExponent
+			    _     -> return 0
+		return (FloatTok ((num%1) * 10^^(exponent - decimals)))
+	    e:_ | toLower e == 'e' -> do
+		exponent <- lexExponent
+		return (FloatTok ((parseInteger 10 ds%1) * 10^^exponent))
+	    _ -> return (IntTok (parseInteger 10 ds))
 
-lexCon :: String -> (Token -> P a) -> P a
-lexCon qual cont s loc y x =
-  let
-    forward n t s = cont t s loc y (x+n)
+    where
+	lexExponent :: Lex a Integer
+	lexExponent = do
+		discard 1	-- 'e' or 'E'
+		r <- getInput
+		case r of
+		    '+':d:_ | isDigit d -> do
+			discard 1
+			lexDecimal
+		    '-':d:_ | isDigit d -> do
+			discard 1
+			n <- lexDecimal
+			return (negate n)
+		    d:_ | isDigit d -> lexDecimal
+		    _ -> fail "Float with missing exponent"
 
-    (con, rest) = span isIdent s
-    l_con = length con
+lexConIdOrQual :: String -> Lex a Token
+lexConIdOrQual qual = do
+	con <- lexWhile isIdent
+	let conid | null qual = ConId con
+		  | otherwise = QConId (qual,con)
+	    qual' | null qual = con
+		  | otherwise = qual ++ '.':con
+	just_a_conid <- alternative (return conid)
+	rest <- getInput
+	case rest of
+	  '.':c:_
+	     | isLower c -> do		-- qualified varid?
+		discard 1
+		id <- lexWhile isIdent
+		case lookup id reserved_ids of
+		   -- cannot qualify a reserved word
+		   Just _  -> just_a_conid
+		   Nothing -> return (QVarId (qual', id))
 
-    just_a_conid
-	| null qual = forward l_con (ConId con) rest
-	| otherwise = forward l_con (QConId (qual,con)) rest
-    qual'
-	| null qual = con
-	| otherwise = qual ++ '.':con
-  in
-  case rest of
-    '.':c1:s1
-     | isLower c1 ->	-- qualified varid?
-	let
-	    (idtail, rest1) = span isIdent s1
-	    id = c1:idtail
-	    l_id = 1 + length idtail
-	in
-	case lookup id reserved_ids of
-	   -- cannot qualify a reserved word
-	   Just keyword -> just_a_conid
-	   Nothing -> forward (l_con+1+l_id) (QVarId (qual', id)) rest1
+	     | isUpper c -> do		-- qualified conid?
+		discard 1
+		lexConIdOrQual qual'
 
-     | isUpper c1 ->	-- qualified conid?
-	lexCon qual' cont (c1:s1) loc y (x+l_con+1)
+	     | isSymbol c -> do	-- qualified symbol?
+		discard 1
+		sym <- lexWhile isSymbol
+		case lookup sym reserved_ops of
+		    -- cannot qualify a reserved operator
+		    Just _  -> just_a_conid
+		    Nothing -> return $ case c of
+			':' -> QConSym (qual', sym)
+			_   -> QVarSym (qual', sym)
 
-     | isSymbol c1 ->	-- qualified symbol?
-	let
-	    (symtail, rest1) = span isSymbol s1
-	    sym = c1 : symtail
-	    l_sym = 1 + length symtail
-	in
-	case lookup sym reserved_ops of
-	    -- cannot qualify a reserved operator
-	    Just _  -> just_a_conid
-	    Nothing -> case c1 of
-			':' -> forward (l_con+1+l_sym)
-				(QConSym (qual', sym)) rest1
-			_   -> forward (l_con+1+l_sym)
-				(QVarSym (qual', sym)) rest1
+	  _ ->	return conid -- not a qualified thing
 
-    _ -> just_a_conid -- not a qualified thing
+lexChar :: Lex a Char
+lexChar = do
+	r <- getInput
+	case r of
+		'\\':_	-> lexEscape
+		c:_	-> discard 1 >> return c
+		[]	-> fail "Incomplete character constant"
 
-lexChar :: (Token -> P a) -> P a
-lexChar cont s loc y x = case s of
-                    '\\':s -> (escapeChar s `thenP` \(e,s,i) _ _ _ _ ->
-                               charEnd e s loc y (x+i)) s loc y x
-                    c:s    -> charEnd c s loc y (x+1)
-                    []     -> error "Internal error: lexChar"
+lexString :: Lex a Token
+lexString = loop ""
+    where
+	loop s = do
+		r <- getInput
+		case r of
+		    '\\':'&':_ -> do
+				discard 2
+				loop s
+		    '\\':c:_ | isSpace c -> do
+				discard 1
+				lexWhiteChars
+				matchChar '\\' "Illegal character in string gap"
+				loop s
+			     | otherwise -> do
+				c <- lexEscape
+				loop (c:s)
+		    '"':_ -> do
+				discard 1
+				return (StringTok (reverse s))
+		    c:_ -> do
+				discard 1
+				loop (c:s)
+		    [] ->	fail "Improperly terminated string"
 
-  where charEnd c ('\'':s) = \loc y x -> cont (Character c) s loc y (x+1)
-        charEnd c s = parseError "Improperly terminated character constant" s
+	lexWhiteChars :: Lex a ()
+	lexWhiteChars = do
+		s <- getInput
+		case s of
+		    '\n':_ -> do
+			lexNewline
+			lexWhiteChars
+		    '\t':_ -> do
+			lexTab
+			lexWhiteChars
+		    c:_ | isSpace c -> do
+			discard 1
+			lexWhiteChars
+		    _ -> return ()
 
-lexString :: (Token -> P a) -> P a
-lexString cont s loc y x = loop "" s x y
-  where
-     loop e s x y = case s of
-            '\\':'&':s  -> loop e s (x+2) y
-            '\\':c:s | isSpace c -> stringGap e s (x+2) y
-		     | otherwise -> (escapeChar (c:s) `thenP` \(e',s,i) _ _ _ _ ->
-				     loop (e':e) s (x+i) y) s loc y x
-            '\"':s{-"-} -> cont (StringTok (reverse e)) s loc y (x+1)
-            c:s		-> loop (c:e) s (x+1) y
-            []          -> parseError "Improperly terminated string" s loc y x
-
-     stringGap e s x y = case s of
-        	'\n':s -> stringGap e s 1 (y+1)
-        	'\\':s -> loop e s (x+1) y
-        	c:s' | isSpace c -> stringGap e s' (x+1) y
-        	     | otherwise ->
-		       parseError "Illegal character in string gap" s loc y x
-                []     -> error "Internal error: stringGap"
-
-escapeChar :: String -> P (Char,String,Int)
-escapeChar s = case s of
+lexEscape :: Lex a Char
+lexEscape = do
+	discard 1
+	r <- getInput
+	case r of
 
 -- Production charesc from section B.2 (Note: \& is handled by caller)
 
-  'a':s 	  -> returnP ('\a',s,2)
-  'b':s 	  -> returnP ('\b',s,2)
-  'f':s 	  -> returnP ('\f',s,2)
-  'n':s 	  -> returnP ('\n',s,2)
-  'r':s 	  -> returnP ('\r',s,2)
-  't':s 	  -> returnP ('\t',s,2)
-  'v':s 	  -> returnP ('\v',s,2)
-  '\\':s        -> returnP ('\\',s,2)
-  '"':s         -> returnP ('\"',s,2)
-  '\'':s        -> returnP ('\'',s,2)
+		'a':_		-> discard 1 >> return '\a'
+		'b':_		-> discard 1 >> return '\b'
+		'f':_		-> discard 1 >> return '\f'
+		'n':_		-> discard 1 >> return '\n'
+		'r':_		-> discard 1 >> return '\r'
+		't':_		-> discard 1 >> return '\t'
+		'v':_		-> discard 1 >> return '\v'
+		'\\':_		-> discard 1 >> return '\\'
+		'"':_		-> discard 1 >> return '\"'
+		'\'':_		-> discard 1 >> return '\''
 
 -- Production ascii from section B.2
 
-  '^':x@(c:s)   -> cntrl x
-  'N':'U':'L':s -> returnP ('\NUL',s,4)
-  'S':'O':'H':s -> returnP ('\SOH',s,4)
-  'S':'T':'X':s -> returnP ('\STX',s,4)
-  'E':'T':'X':s -> returnP ('\ETX',s,4)
-  'E':'O':'T':s -> returnP ('\EOT',s,4)
-  'E':'N':'Q':s -> returnP ('\ENQ',s,4)
-  'A':'C':'K':s -> returnP ('\ACK',s,4)
-  'B':'E':'L':s -> returnP ('\BEL',s,4)
-  'B':'S':s     -> returnP ('\BS', s,3)
-  'H':'T':s  	  -> returnP ('\HT', s,3)
-  'L':'F':s 	  -> returnP ('\LF', s,3)
-  'V':'T':s 	  -> returnP ('\VT', s,3)
-  'F':'F':s 	  -> returnP ('\FF', s,3)
-  'C':'R':s 	  -> returnP ('\CR', s,3)
-  'S':'O':s 	  -> returnP ('\SO', s,3)
-  'S':'I':s 	  -> returnP ('\SI', s,3)
-  'D':'L':'E':s -> returnP ('\DLE',s,4)
-  'D':'C':'1':s -> returnP ('\DC1',s,4)
-  'D':'C':'2':s -> returnP ('\DC2',s,4)
-  'D':'C':'3':s -> returnP ('\DC3',s,4)
-  'D':'C':'4':s -> returnP ('\DC4',s,4)
-  'N':'A':'K':s -> returnP ('\NAK',s,4)
-  'S':'Y':'N':s -> returnP ('\SYN',s,4)
-  'E':'T':'B':s -> returnP ('\ETB',s,4)
-  'C':'A':'N':s -> returnP ('\CAN',s,4)
-  'E':'M':s     -> returnP ('\EM', s,3)
-  'S':'U':'B':s -> returnP ('\SUB',s,4)
-  'E':'S':'C':s -> returnP ('\ESC',s,4)
-  'F':'S':s     -> returnP ('\FS', s,3)
-  'G':'S':s     -> returnP ('\GS', s,3)
-  'R':'S':s     -> returnP ('\RS', s,3)
-  'U':'S':s     -> returnP ('\US', s,3)
-  'S':'P':s     -> returnP ('\SP', s,3)
-  'D':'E':'L':s -> returnP ('\DEL',s,4)
+		'^':c:_		-> discard 2 >> cntrl c
+		'N':'U':'L':_	-> discard 3 >> return '\NUL'
+		'S':'O':'H':_	-> discard 3 >> return '\SOH'
+		'S':'T':'X':_	-> discard 3 >> return '\STX'
+		'E':'T':'X':_	-> discard 3 >> return '\ETX'
+		'E':'O':'T':_	-> discard 3 >> return '\EOT'
+		'E':'N':'Q':_	-> discard 3 >> return '\ENQ'
+		'A':'C':'K':_	-> discard 3 >> return '\ACK'
+		'B':'E':'L':_	-> discard 3 >> return '\BEL'
+		'B':'S':_	-> discard 2 >> return '\BS'
+		'H':'T':_	-> discard 2 >> return '\HT'
+		'L':'F':_	-> discard 2 >> return '\LF'
+		'V':'T':_	-> discard 2 >> return '\VT'
+		'F':'F':_	-> discard 2 >> return '\FF'
+		'C':'R':_	-> discard 2 >> return '\CR'
+		'S':'O':_	-> discard 2 >> return '\SO'
+		'S':'I':_	-> discard 2 >> return '\SI'
+		'D':'L':'E':_	-> discard 3 >> return '\DLE'
+		'D':'C':'1':_	-> discard 3 >> return '\DC1'
+		'D':'C':'2':_	-> discard 3 >> return '\DC2'
+		'D':'C':'3':_	-> discard 3 >> return '\DC3'
+		'D':'C':'4':_	-> discard 3 >> return '\DC4'
+		'N':'A':'K':_	-> discard 3 >> return '\NAK'
+		'S':'Y':'N':_	-> discard 3 >> return '\SYN'
+		'E':'T':'B':_	-> discard 3 >> return '\ETB'
+		'C':'A':'N':_	-> discard 3 >> return '\CAN'
+		'E':'M':_	-> discard 2 >> return '\EM'
+		'S':'U':'B':_	-> discard 3 >> return '\SUB'
+		'E':'S':'C':_	-> discard 3 >> return '\ESC'
+		'F':'S':_	-> discard 2 >> return '\FS'
+		'G':'S':_	-> discard 2 >> return '\GS'
+		'R':'S':_	-> discard 2 >> return '\RS'
+		'U':'S':_	-> discard 2 >> return '\US'
+		'S':'P':_	-> discard 2 >> return '\SP'
+		'D':'E':'L':_	-> discard 3 >> return '\DEL'
 
 -- Escaped numbers
 
-  'o':s		-> let (ds,rest) = span isOctDigit s in
-		   checkChar (parseInteger 8 ds) `thenP` \ch ->
-		   returnP (ch, rest, length ds + 2)
-  'x':s		-> let (ds,rest) = span isHexDigit s in
-		   checkChar (parseInteger 16 ds) `thenP` \ch ->
-		   returnP (ch, rest, length ds + 2)
-  s@(c:_) | isDigit c ->
-		   let (ds,rest) = span isDigit s in
-		   checkChar (parseInteger 10 ds) `thenP` \ch ->
-		   returnP (ch, rest, length ds + 1)
+		'o':c:_ | isOctDigit c -> do
+					discard 1
+					n <- lexOctal
+					checkChar n
+		'x':c:_ | isHexDigit c -> do
+					discard 1
+					n <- lexHexadecimal
+					checkChar n
+		c:_ | isDigit c -> do
+					n <- lexDecimal
+					checkChar n
 
-  _             -> parseError "Illegal escape sequence"
+		_		-> fail "Illegal escape sequence"
 
- where checkChar n | n <= 0xFFFF = returnP (chr (fromInteger n))
-       checkChar _               = parseError "Character constant out of range"
+    where
+	checkChar n | n <= 0x01FFFF = return (chr (fromInteger n))
+	checkChar _		    = fail "Character constant out of range"
+
+-- Production cntrl from section B.2
+
+	cntrl :: Char -> Lex a Char
+	cntrl c | c >= '@' && c <= '_' = return (chr (ord c - ord '@'))
+	cntrl _                        = fail "Illegal control character"
+
+-- assumes at least one octal digit
+lexOctal :: Lex a Integer
+lexOctal = do
+	ds <- lexWhile isOctDigit
+	return (parseInteger 8 ds)
+
+-- assumes at least one hexadecimal digit
+lexHexadecimal :: Lex a Integer
+lexHexadecimal = do
+	ds <- lexWhile isHexDigit
+	return (parseInteger 16 ds)
+
+-- assumes at least one decimal digit
+lexDecimal :: Lex a Integer
+lexDecimal = do
+	ds <- lexWhile isDigit
+	return (parseInteger 10 ds)
 
 -- Stolen from Hugs's Prelude
 parseInteger :: Integer -> String -> Integer
 parseInteger radix ds =
 	foldl1 (\n d -> n * radix + d) (map (toInteger . digitToInt) ds)
-
--- Production cntrl from section B.2
-
-cntrl :: String -> P (Char,String,Int)
-cntrl (c:s) | c >= '@' && c <= '_' = returnP (chr (ord c - ord '@'), s,2)
-cntrl _                            = parseError "Illegal control character"
-
-nestedComment cont y x bol s =
-   case s of
-      '-':'}':s -> cont y (x+2) bol s
-      '{':'-':s -> nestedComment (nestedComment cont) y (x+2) bol s
-      '\t':s    -> nestedComment cont y (nextTab x) bol s
-      '\n':s    -> nestedComment cont (y+1) 1 True s
-      c:s       -> nestedComment cont y (x+1) bol s
-      []        -> error "Internal error: nestedComment"

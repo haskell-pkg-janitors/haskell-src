@@ -21,7 +21,6 @@
 > import Language.Haskell.ParseUtils
 > }
 
-ToDo: Is (,) valid as exports? We don't allow it.
 ToDo: Check exactly which names must be qualified with Prelude (commas and friends)
 ToDo: Inst (MPCs?)
 ToDo: Polish constr a bit
@@ -112,7 +111,7 @@ Reserved Ids
 >	'where'		{ KW_Where }
 >	'qualified'	{ KW_Qualified }
 
-> %monad { P } { thenP } { returnP }
+> %monad { P }
 > %lexer { lexer } { EOF }
 > %name parse
 > %tokentype { Token }
@@ -255,11 +254,11 @@ shift/reduce-conflict, so we don't handle this case here, but in bodyaux.
 >	: srcloc 'type' simpletype '=' type
 >			{ HsTypeDecl $1 (fst $3) (snd $3) $5 }
 >	| srcloc 'data' ctype '=' constrs deriving
->			{% checkDataHeader $3 `thenP` \(cs,c,t) ->
->			   returnP (HsDataDecl $1 cs c t (reverse $5) $6) }
+>			{% do { (cs,c,t) <- checkDataHeader $3;
+>				return (HsDataDecl $1 cs c t (reverse $5) $6) } }
 >	| srcloc 'newtype' ctype '=' constr deriving
->			{% checkDataHeader $3 `thenP` \(cs,c,t) ->
->			   returnP (HsNewTypeDecl $1 cs c t $5 $6) }
+>			{% do { (cs,c,t) <- checkDataHeader $3;
+>				return (HsNewTypeDecl $1 cs c t $5 $6) } }
 >	| srcloc 'class' ctype optcbody
 >			{ HsClassDecl $1 $3 $4 }
 >	| srcloc 'instance' ctype optvaldefs
@@ -306,8 +305,8 @@ would require more lookahead. So let's check for ourselves...
 
 > vars	:: { [HsName] }
 >	: vars ',' var			{ $3 : $1 }
->	| qvar				{% checkUnQual $1 `thenP` \n ->
->					   returnP [n] }
+>	| qvar				{% do { n <- checkUnQual $1;
+>						return [n] } }
 
 -----------------------------------------------------------------------------
 Types
@@ -377,14 +376,14 @@ Datatype declarations
 >	| srcloc con '{' fielddecls '}' { HsRecDecl $1 $2 (reverse $4) }
 
 > scontype :: { (HsName, [HsBangType]) }
->	: btype				{% splitTyConApp $1 `thenP` \(c,ts) ->
->					   returnP (c,map HsUnBangedTy ts) }
+>	: btype				{% do { (c,ts) <- splitTyConApp $1;
+>						return (c,map HsUnBangedTy ts) } }
 >	| scontype1			{ $1 }
 
 > scontype1 :: { (HsName, [HsBangType]) }
->	: btype '!' atype		{% splitTyConApp $1 `thenP` \(c,ts) ->
->					   returnP (c,map HsUnBangedTy ts++
->						 	[HsBangedTy $3]) }
+>	: btype '!' atype		{% do { (c,ts) <- splitTyConApp $1;
+>						return (c,map HsUnBangedTy ts++
+>							[HsBangedTy $3]) } }
 >	| scontype1 satype		{ (fst $1, snd $1 ++ [$2] ) }
 
 > satype :: { HsBangType }
@@ -450,8 +449,8 @@ Value definitions
 >	| {- empty -}			{ [] }
 
 > rhs	:: { HsRhs }
->	: '=' exp			{% checkExpr $2 `thenP` \e ->
->					   returnP (HsUnGuardedRhs e) }
+>	: '=' exp			{% do { e <- checkExpr $2;
+>						return (HsUnGuardedRhs e) } }
 >	| gdrhs				{ HsGuardedRhss  (reverse $1) }
 
 > gdrhs :: { [HsGuardedRhs] }
@@ -459,9 +458,9 @@ Value definitions
 >	| gdrh				{ [$1] }
 
 > gdrh :: { HsGuardedRhs }
->	: srcloc '|' exp0 '=' exp	{% checkExpr $3 `thenP` \g ->
->					   checkExpr $5 `thenP` \e ->
->					   returnP (HsGuardedRhs $1 g e) }
+>	: srcloc '|' exp0 '=' exp	{% do { g <- checkExpr $3;
+>						e <- checkExpr $5;
+>						return (HsGuardedRhs $1 g e) } }
 
 -----------------------------------------------------------------------------
 Expressions
@@ -522,8 +521,8 @@ qvar here to avoid a shift/reduce conflict, and then check it ourselves
 (as for vars above).
 
 > aexp	:: { HsExp }
->	: qvar '@' aexp			{% checkUnQual $1 `thenP` \n ->
->					   returnP (HsAsPat n $3) }
+>	: qvar '@' aexp			{% do { n <- checkUnQual $1;
+>						return (HsAsPat n $3) } }
 >	| '~' aexp			{ HsIrrPat $2 }
 >  	| aexp1				{ $1 }
 
@@ -765,8 +764,7 @@ Layout
 >	: vccurly		{ () } -- context popped in lexer.
 >	| error			{% popContext }
 
-> layout_on  :: { () }	:	{% getSrcLoc `thenP` \(SrcLoc r c) ->
->				   pushContext (Layout c) }
+> layout_on  :: { () }	:	{% pushCurrentContext }
 
 -----------------------------------------------------------------------------
 Miscellaneous (mostly renamings)
@@ -793,7 +791,8 @@ Miscellaneous (mostly renamings)
 -----------------------------------------------------------------------------
 
 > {
-> happyError = parseError "Parse error"
+> happyError :: P a
+> happyError = fail "Parse error"
 
 > -- | Parse of a string, which should contain a complete Haskell 98 module.
 > parseModule :: String -> ParseResult HsModule

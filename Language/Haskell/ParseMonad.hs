@@ -9,13 +9,21 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Monad for the Haskell parser.
+-- Monads for the Haskell parser and lexer.
 --
 -----------------------------------------------------------------------------
 
-module Language.Haskell.ParseMonad where
+module Language.Haskell.ParseMonad(
+		-- * Parsing
+		P, ParseResult(..), LexContext(..),
+		runParser, getSrcLoc, pushCurrentContext, popContext,
+		-- * Lexing
+		Lex, runL, getInput, discard, lexNewline, lexTab, lexWhile,
+		alternative, checkBOL, setBOL, startToken, getOffside,
+		pushContextL, popContextL
+	) where
 
-import Language.Haskell.Syntax
+import Language.Haskell.Syntax(SrcLoc(..))
 
 -- | The result of a parse.
 data ParseResult a
@@ -34,53 +42,145 @@ data LexContext = NoLayout | Layout Int
 
 type ParseState = [LexContext]
 
-type P a
-     =  String			-- input string
-     -> SrcLoc			-- location of last token read
-     -> Int			-- current line
-     -> Int			-- current column
-     -> ParseState		-- layout info.
-     -> ParseStatus a
+-- | Monad for parsing
+
+newtype P a = P { runP ::
+		        String		-- input string
+		     -> Int		-- current column
+		     -> Int		-- current line
+		     -> SrcLoc		-- location of last token read
+		     -> ParseState	-- layout info.
+		     -> ParseStatus a
+		}
 
 runParser :: P a -> String -> ParseResult a
-runParser p s = case p s (SrcLoc 1 1) 1 0 [] of
+runParser (P m) s = case m s 0 1 (SrcLoc 1 1) [] of
 	Ok _ a -> ParseOk a
 	Failed loc s -> ParseFailed loc s
 
-thenP :: P a -> (a -> P b) -> P b
-m `thenP` k = \i l n c s ->
-	case m i l n c s of
-	    Failed loc s -> Failed loc s
-	    Ok s' a -> case k a of k' -> k' i l n c s'
-
-m `thenP_` k = m `thenP` \_ -> k
-
-mapP :: (a -> P b) -> [a] -> P [b]
-mapP f [] = returnP []
-mapP f (a:as) =
-     f a `thenP` \b ->
-     mapP f as `thenP` \bs ->
-     returnP (b:bs)
-
-returnP a = \i l n c s -> Ok s a
-
-failP :: String -> P a
-failP err = \i l n c s -> Failed (SrcLoc n c) err
+instance Monad P where
+	return a = P $ \_i _x _y _l s -> Ok s a
+	P m >>= k = P $ \i x y l s ->
+		case m i x y l s of
+		    Failed loc s -> Failed loc s
+		    Ok s' a -> runP (k a) i x y l s'
+	fail s = P $ \_r _col _line loc _stk -> Failed loc s
 
 getSrcLoc :: P SrcLoc
-getSrcLoc = \i l n c s -> Ok s l
+getSrcLoc = P $ \_i _x _y l s -> Ok s l
 
-getContext :: P [LexContext]
-getContext = \i l n c s -> Ok s s
+pushCurrentContext :: P ()
+pushCurrentContext = do
+	SrcLoc _ c <- getSrcLoc
+	pushContext (Layout c)
 
 pushContext :: LexContext -> P ()
 pushContext ctxt =
 --trace ("pushing lexical scope: " ++ show ctxt ++"\n") $
-	\i l n c s -> Ok (ctxt:s) ()
+	P $ \_i _x _y _l s -> Ok (ctxt:s) ()
 
 popContext :: P ()
-popContext = \i l n c stk ->
+popContext = P $ \_i _x _y _l stk ->
       case stk of
-	(_:s) -> --trace ("popping lexical scope, context now "++show s ++ "\n") $
+   	(_:s) -> --trace ("popping lexical scope, context now "++show s ++ "\n") $
             Ok s ()
         []    -> error "Internal error: empty context in popContext"
+
+-- Monad for lexical analysis:
+-- a continuation-passing version of the parsing monad
+
+newtype Lex r a = Lex { runL :: (a -> P r) -> P r }
+
+instance Monad (Lex r) where
+	return a = Lex $ \k -> k a
+	Lex v >>= f = Lex $ \k -> v (\a -> runL (f a) k)
+	Lex v >> Lex w = Lex $ \k -> v (\_ -> w k)
+	fail s = Lex $ \_ -> fail s
+
+-- Operations on this monad
+
+getInput :: Lex r String
+getInput = Lex $ \cont -> P $ \r -> runP (cont r) r
+
+-- | Discard some input characters (these must not include tabs or newlines).
+
+discard :: Int -> Lex r ()
+discard n = Lex $ \cont -> P $ \r x -> runP (cont ()) (drop n r) (x+n)
+
+-- | Discard the next character, which must be a newline.
+
+lexNewline :: Lex a ()
+lexNewline = Lex $ \cont -> P $ \(_:r) _x y -> runP (cont ()) r 1 (y+1)
+
+-- | Discard the next character, which must be a tab.
+
+lexTab :: Lex a ()
+lexTab = Lex $ \cont -> P $ \(_:r) x -> runP (cont ()) r (nextTab x)
+
+nextTab x = x + (tAB_LENGTH - (x-1) `mod` tAB_LENGTH)
+
+tAB_LENGTH = 8 :: Int
+
+-- Consume and return the largest string of characters satisfying p
+
+lexWhile :: (Char -> Bool) -> Lex a String
+lexWhile p = Lex $ \cont -> P $ \r x ->
+	let (cs,rest) = span p r in
+	runP (cont cs) rest (x + length cs)
+
+-- An alternative scan, to which we can return if subsequent scanning
+-- is unsuccessful.
+
+alternative :: Lex a v -> Lex a (Lex a v)
+alternative (Lex v) = Lex $ \cont -> P $ \r x y ->
+	runP (cont (Lex $ \cont' -> P $ \_r _x _y ->
+		runP (v cont') r x y)) r x y
+
+-- The source location (SrcLoc y x) is the coordinates of the previous token,
+-- or, while scanning a token, the start of the current token.
+
+-- col is the current column in the source file.
+-- We also need to remember between scanning tokens whether we are
+-- somewhere at the beginning of the line before the first token.
+-- This could be done with an extra Bool argument to the P monad,
+-- but as a hack we use a col value of 0 to indicate this situation.
+
+-- Setting col to 0 is used in two places: just after emitting a virtual
+-- close brace due to layout, so that next time through we check whether
+-- we also need to emit a semi-colon, and at the beginning of the file,
+-- by runParser, to kick off the lexer.
+-- Thus when col is zero, the true column can be taken from the loc.
+
+checkBOL :: Lex a Bool
+checkBOL = Lex $ \cont -> P $ \r x y loc@(SrcLoc _y x') ->
+		if x == 0 then runP (cont True) r x' y loc
+			else runP (cont False) r x y loc
+
+setBOL :: Lex a ()
+setBOL = Lex $ \cont -> P $ \r _ -> runP (cont ()) r 0
+
+-- Set the loc to the current position
+
+startToken :: Lex a ()
+startToken = Lex $ \cont -> P $ \s x y _ -> runP (cont ()) s x y (SrcLoc y x)
+
+-- Current status with respect to the offside (layout) rule:
+-- LT: we are to the left of the current indent (if any)
+-- EQ: we are at the current indent (if any)
+-- GT: we are to the right of the current indent, or not subject to layout
+
+getOffside :: Lex a Ordering
+getOffside = Lex $ \cont -> P $ \r x y loc stk ->
+		let ord = case stk of
+			(Layout n:_) -> compare x n
+			_            -> GT
+		in runP (cont ord) r x y loc stk
+
+pushContextL :: LexContext -> Lex a ()
+pushContextL ctxt = Lex $ \cont -> P $ \r x y loc stk ->
+		runP (cont ()) r x y loc (ctxt:stk)
+
+popContextL :: String -> Lex a ()
+popContextL fn = Lex $ \cont -> P $ \r x y loc stk -> case stk of
+		(_:ctxt) -> runP (cont ()) r x y loc ctxt
+		[]       -> error ("Internal error: empty context in " ++ fn)
