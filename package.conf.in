@@ -1,25 +1,34 @@
-Package {
-	name		= "haskell-src",
-	auto		= True,
-#ifdef INSTALLING
-	import_dirs	= [ "$libdir/imports" ],
-#else
-	import_dirs	= [ "$libdir/libraries/haskell-src" ],
-#endif
-	source_dirs	= [],
-#ifdef INSTALLING
-	library_dirs	= [ "$libdir" ],
-#else
-	library_dirs	= [ "$libdir/libraries/haskell-src" ],
-#endif
-	hs_libraries	= [ "HShaskell-src" ],
-	extra_libraries	= [],
-	include_dirs	= [],
-	c_includes	= [],
-	package_deps	= [ "base", "haskell98" ],
+name:		PACKAGE
+version:	VERSION
+license:	BSD3
+maintainer:	libraries@haskell.org
+exposed:	True
+
+exposed-modules:
+	Language.Haskell.Lexer,
+	Language.Haskell.Parser,
+	Language.Haskell.ParseMonad,
+	Language.Haskell.ParseUtils,
+	Language.Haskell.Pretty,
+	Language.Haskell.Syntax
+
+hidden-modules:
+
+import-dirs:	IMPORT_DIR
+library-dirs:	LIB_DIR
+hs-libraries:   "HShaskell-src"
+extra-libs:
+
+include-dirs:
+includes:		
+depends:	base, haskell98
 		/* The dependency on Haskell 98 is only because
 		   Happy generates a parser that imports Array */
-	extra_ghc_opts	= [],
-	extra_cc_opts	= [],
-	extra_ld_opts	= []
-}
+extra-hugs-opts:
+extra-cc-opts:
+extra-ld-opts:
+framework-dirs:
+extra-frameworks:
+haddock-interfaces:
+haddock-html:
+

@@ -11,6 +11,7 @@ endif
 
 ALL_DIRS     = Language/Haskell
 PACKAGE      = haskell-src
+VERSION = 1.0
 PACKAGE_DEPS = base
 
 SRC_HC_OPTS += -fglasgow-exts -cpp 
