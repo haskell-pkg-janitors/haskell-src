@@ -13,16 +13,19 @@ import Char (toLower)
 -------------------------------------------------------
 -- The quotation monad as IO
 
-type Q a = IO a
-  -- FIXME: Not nice, as we can't export Q abstractly this way.  Well, as
-  --   there isn't even an export list, it doesn't matter much at the moment
-  --   anyway *sigh*  -=chak
+newtype Q a = Q (IO a)
+unQ (Q a)   = a
 
+instance Monad Q where
+   return x    = Q (return x)
+   (Q m) >>= k = Q (m >>= \r -> unQ (k r))
+   fail s      = Q (fail s)
+   
 qIO :: IO a -> Q a
-qIO = id
+qIO io = Q io
 
 runQ :: Q a -> IO a
-runQ = id
+runQ (Q io) = io
 
 -- FIXME: What is the point of `returnQ', `bindQ, and `sequenceQ'?  As long as
 --   Q is an instance of Monad, we get all this for free.  -=chak
@@ -46,9 +49,9 @@ counter :: IORef Int
 counter = unsafePerformIO (newIORef 0)
 
 gensym :: String -> Q String
-gensym s = do { n <- readIORef counter
-              ; writeIORef counter (n+1)
-              ; return(s++"'"++(show n)) }
+gensym s = Q( do { n <- readIORef counter
+                 ; writeIORef counter (n+1)
+                 ; return(s++"'"++(show n)) })
 
 class Lift t where
   lift :: t -> Exp
@@ -123,6 +126,7 @@ data Dec
   | Val Pat (RightHandSide Exp) [Dec]   -- { p = b where decs }
   | Data String [String] 
          [Con] [String]         	-- { data T x = A x | B (T x) deriving (Z,W)}
+  | TySyn String [String] Typ		-- { type T x = (x,x) }
   | Class Cxt String [String] [Dec]	-- { class Eq a => Ord a where ds }
   | Instance Cxt Typ [Dec]   	 	-- { instance Show w => Show [w] where ds }
   | Proto String Typ                    -- { length :: [a] -> Int }
@@ -337,6 +341,9 @@ fun nm cs =
     ; return (Fun nm cs1)
     }
 
+tySynD :: String -> [String] -> Type -> Decl
+tySynD tc tvs rhs = do { rhs1 <- rhs; return (TySyn tc tvs rhs1) }
+
 dataD :: String -> [String] -> [Cons] -> [String] -> Decl
 dataD tc tvs cons derivs
   = do { cons1 <- sequence cons; return (Data tc tvs cons1 derivs) }
@@ -549,6 +556,8 @@ pprDec :: Dec -> Doc
 pprDec (Fun f cs)   = vcat $ map (\c -> text f <+> pprClause c) cs
 pprDec (Val p r ds) = pprPat p <+> pprRhs True r
                       $$ where_clause ds
+pprDec (TySyn t xs rhs) = text "type" <+> text t <+> hsep (map text xs) 
+				<+> text "=" <+> pprTyp rhs
 pprDec (Data t xs cs ds) = text "data" <+> text t <+> hsep (map text xs)
                        <+> text "=" <+> sep (map pprCon cs)
                         $$ if null ds
