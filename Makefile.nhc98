@@ -1,9 +1,9 @@
 THISPKG	= haskell-src
 SEARCH	=
 EXTRA_H_FLAGS = +RTS -K6M -RTS
-# NOTE: 170M is ridiculous, but otherwise there is a segfault with CFG=p
+# NOTE: 200M is ridiculous, but otherwise there is a segfault with CFG=p
 # for Language/Haskell/Parser.hs. More investigation is needed here...
-EXTRA_HBC_FLAGS = +RTS -H170M -A2M -RTS
+EXTRA_HBC_FLAGS = +RTS -H200M -A2M -RTS
 
 SRCS	= \
 	Language/Haskell/Lexer.hs Language/Haskell/ParseMonad.hs \
