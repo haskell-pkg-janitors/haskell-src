@@ -20,7 +20,8 @@ module Language.Haskell.ParseUtils (
 	, checkContext		-- HsType -> P HsContext
 	, checkAssertion	-- HsType -> P HsAsst
 	, checkDataHeader	-- HsQualType -> P (HsContext,HsName,[HsName])
-	, checkSimple		-- HsType -> [HsName] -> P ((HsName,[HsName]))
+	, checkClassHeader	-- HsQualType -> P (HsContext,HsName,[HsName])
+	, checkInstHeader	-- HsQualType -> P (HsContext,HsQName,[HsType])
 	, checkPattern		-- HsExp -> P HsPat
 	, checkExpr		-- HsExp -> P HsExp
 	, checkValDef		-- SrcLoc -> HsExp -> HsRhs -> [HsDecl] -> P HsDecl
@@ -60,13 +61,33 @@ checkAssertion = checkAssertion' []
 
 checkDataHeader :: HsQualType -> P (HsContext,HsName,[HsName])
 checkDataHeader (HsQualType cs t) = do
-	(c,ts) <- checkSimple t []
+	(c,ts) <- checkSimple "data/newtype" t []
 	return (cs,c,ts)
 
-checkSimple :: HsType -> [HsName] -> P ((HsName,[HsName]))
-checkSimple (HsTyApp l (HsTyVar a)) xs = checkSimple l (a:xs)
-checkSimple (HsTyCon (UnQual t))    xs = return (t,xs)
-checkSimple _ _ = fail "Illegal data/newtype declaration"
+checkClassHeader :: HsQualType -> P (HsContext,HsName,[HsName])
+checkClassHeader (HsQualType cs t) = do
+	(c,ts) <- checkSimple "class" t []
+	return (cs,c,ts)
+
+checkSimple :: String -> HsType -> [HsName] -> P ((HsName,[HsName]))
+checkSimple kw (HsTyApp l (HsTyVar a)) xs = checkSimple kw l (a:xs)
+checkSimple _kw (HsTyCon (UnQual t))   xs = return (t,xs)
+checkSimple kw _ _ = fail ("Illegal " ++ kw ++ " declaration")
+
+checkInstHeader :: HsQualType -> P (HsContext,HsQName,[HsType])
+checkInstHeader (HsQualType cs t) = do
+	(c,ts) <- checkInsts t []
+	return (cs,c,ts)
+
+checkInsts :: HsType -> [HsType] -> P ((HsQName,[HsType]))
+checkInsts (HsTyApp l t) ts = checkInsts l (t:ts)
+checkInsts (HsTyCon c)   ts = return (c,ts)
+checkInsts _ _ = fail "Illegal instance declaration"
+
+checkInst :: HsType -> P ()
+checkInst (HsTyApp l _) = checkInst l
+checkInst (HsTyVar _)   = fail "Illegal instance declaration"
+checkInst _             = return ()
 
 -----------------------------------------------------------------------------
 -- Checking Patterns.

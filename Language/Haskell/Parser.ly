@@ -265,9 +265,11 @@ shift/reduce-conflict, so we don't handle this case here, but in bodyaux.
 >			{% do { (cs,c,t) <- checkDataHeader $3;
 >				return (HsNewTypeDecl $1 cs c t $5 $6) } }
 >	| srcloc 'class' ctype optcbody
->			{ HsClassDecl $1 $3 $4 }
+>			{% do { (cs,c,vs) <- checkClassHeader $3;
+>				return (HsClassDecl $1 cs c vs $4) } }
 >	| srcloc 'instance' ctype optvaldefs
->			{ HsInstDecl $1 $3 $4 }
+>			{% do { (cs,c,ts) <- checkInstHeader $3;
+>				return (HsInstDecl $1 cs c ts $4) } }
 >	| srcloc 'default' '(' typelist ')'
 >			{ HsDefaultDecl $1 $4 }
 >       | decl		{ $1 }

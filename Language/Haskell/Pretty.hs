@@ -315,26 +315,30 @@ instance Pretty HsDecl where
 
 	--m{spacing=False}
 	-- special case for empty class declaration
-	pretty (HsClassDecl pos qualType []) =
+	pretty (HsClassDecl pos context name nameList []) =
 		blankline $
 		markLine pos $
-		mySep [text "class", pretty qualType]
-	pretty (HsClassDecl pos qualType declList) =
+		mySep ( [text "class", ppHsContext context, pretty name]
+			++ map pretty nameList)
+	pretty (HsClassDecl pos context name nameList declList) =
 		blankline $
 		markLine pos $
-		mySep [text "class", pretty qualType, text "where"]
+		mySep ( [text "class", ppHsContext context, pretty name]
+			++ map pretty nameList ++ [text "where"])
 		$$$ body classIndent (map pretty declList)
 
 	-- m{spacing=False}
 	-- special case for empty instance declaration
-	pretty (HsInstDecl pos qualType []) =
+	pretty (HsInstDecl pos context name args []) =
 		blankline $
 		markLine pos $
-		mySep [text "instance", pretty qualType]
-	pretty (HsInstDecl pos qualType declList) =
+		mySep ( [text "instance", ppHsContext context, pretty name]
+			++ map ppHsTypeArg args)
+	pretty (HsInstDecl pos context name args declList) =
 		blankline $
 		markLine pos $
-		mySep [text "instance", pretty qualType, text "where"]
+		mySep ( [text "instance", ppHsContext context, pretty name]
+			++ map ppHsTypeArg args ++ [text "where"])
 		$$$ body classIndent (map pretty declList)
 
 	pretty (HsDefaultDecl pos htypes) =

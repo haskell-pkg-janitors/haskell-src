@@ -160,8 +160,8 @@ data HsDecl
 	 | HsDataDecl	 SrcLoc HsContext HsName [HsName] [HsConDecl] [HsQName]
 	 | HsInfixDecl   SrcLoc HsAssoc Int [HsOp]
 	 | HsNewTypeDecl SrcLoc HsContext HsName [HsName] HsConDecl [HsQName]
-	 | HsClassDecl	 SrcLoc HsQualType [HsDecl]
-	 | HsInstDecl	 SrcLoc HsQualType [HsDecl]
+	 | HsClassDecl	 SrcLoc HsContext HsName [HsName] [HsDecl]
+	 | HsInstDecl	 SrcLoc HsContext HsQName [HsType] [HsDecl]
 	 | HsDefaultDecl SrcLoc [HsType]
 	 | HsTypeSig	 SrcLoc [HsName] HsQualType
 	 | HsFunBind     [HsMatch]
