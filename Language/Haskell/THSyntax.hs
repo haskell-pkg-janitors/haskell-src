@@ -1,3 +1,17 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Language.Haskell.THSyntax
+-- Copyright   :  (c) The University of Glasgow 2003
+-- License     :  BSD-style (see the file libraries/base/LICENSE)
+-- 
+-- Maintainer  :  libraries@haskell.org
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-- Abstract syntax definitions for Template Haskell.
+--
+-----------------------------------------------------------------------------
+
 module Language.Haskell.THSyntax 
 -- FIXME: *urgh* we don't really want to export stuff like `counter'  -=chak
 where
