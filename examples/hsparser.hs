@@ -4,8 +4,8 @@
 module Main (main, mainArgs, testLexer) where
 
 import Data.List
-import Language.Haskell.Lexer
-import Language.Haskell.ParseMonad
+import Language.Haskell.Lexer (lexer, Token(EOF))
+import Language.Haskell.ParseMonad (runParserWithMode)
 import Language.Haskell.Parser
 import Language.Haskell.Syntax
 import Language.Haskell.Pretty
