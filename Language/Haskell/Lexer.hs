@@ -175,8 +175,12 @@ lexWhiteSpace bol = do
 	    '-':'-':rest | all (== '-') (takeWhile isSymbol rest) -> do
 		lexWhile (== '-')
 		lexWhile (/= '\n')
-		lexNewline
-		lexWhiteSpace True
+		s' <- getInput
+		case s' of
+		    [] -> fail "Unterminated end-of-line comment"
+		    _ -> do
+			lexNewline
+			lexWhiteSpace True
 	    '\n':_ -> do
 		lexNewline
 		lexWhiteSpace True
