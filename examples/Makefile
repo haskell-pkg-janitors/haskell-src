@@ -1,25 +1,17 @@
+# -----------------------------------------------------------------------------
+
 TOP = ../..
 include $(TOP)/mk/boilerplate.mk
 
-NO_BOOT_TARGET	= YES
-WAYS		=
-
 # -----------------------------------------------------------------------------
 
-HS_FILES	:= $(wildcard *.hs)
-LHS_FILES	:= $(wildcard *.lhs)
-PROGRAMS	:= $(HS_FILES:.hs=$(exeext)) $(LHS_FILES:.lhs=$(exeext))
-CLEAN_FILES	+= $(PROGRAMS)
+ifeq "$(way)" ""
+HS_PROG        = hsparser$(exeext)
+endif
 
-SRC_HC_OPTS	+= -package haskell-src
-
-all:: $(PROGRAMS)
-
-%$(exeext): %.hs
-	$(HC) -o $@ $(HC_OPTS) $(LD_OPTS) $<
-
-%$(exeext): %.lhs
-	$(HC) -o $@ $(HC_OPTS) $(LD_OPTS) $<
+HC             = $(GHC_INPLACE)
+MKDEPENDHS     = $(GHC_INPLACE)
+SRC_HC_OPTS   += -package haskell-src
 
 # -----------------------------------------------------------------------------
 
