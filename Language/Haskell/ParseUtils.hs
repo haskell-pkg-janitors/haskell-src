@@ -25,6 +25,7 @@ module Language.Haskell.ParseUtils (
 	, checkPattern		-- HsExp -> P HsPat
 	, checkExpr		-- HsExp -> P HsExp
 	, checkValDef		-- SrcLoc -> HsExp -> HsRhs -> [HsDecl] -> P HsDecl
+	, checkClassBody	-- [HsDecl] -> P [HsDecl]
 	, checkUnQual		-- HsQName -> P HsName
 	, checkRevDecls		-- [HsDecl] -> P [HsDecl]
  ) where
@@ -244,13 +245,25 @@ checkValDef srcloc lhs rhs whereBinds =
 			return (HsPatBind srcloc lhs rhs whereBinds)
 
 -- A variable binding is parsed as an HsPatBind.
--- ToDo: separate checks for valdefs in classes, in instances and elsewhere.
 
 isFunLhs (HsInfixApp l (HsQVarOp (UnQual op)) r) es = Just (op, l:r:es)
 isFunLhs (HsApp (HsVar (UnQual f)) e) es = Just (f, e:es)
 isFunLhs (HsApp (HsParen f) e) es = isFunLhs f (e:es)
 isFunLhs (HsApp f e) es = isFunLhs f (e:es)
 isFunLhs _ _ = Nothing
+
+-----------------------------------------------------------------------------
+-- In a class or instance body, a pattern binding must be of a variable.
+
+checkClassBody :: [HsDecl] -> P [HsDecl]
+checkClassBody decls = do
+	mapM_ checkMethodDef decls
+	return decls
+
+checkMethodDef :: HsDecl -> P ()
+checkMethodDef (HsPatBind _ (HsPVar _) _ _) = return ()
+checkMethodDef (HsPatBind _ _ _ _) = fail "illegal method definition"
+checkMethodDef _ = return ()
 
 -----------------------------------------------------------------------------
 -- Check that an identifier or symbol is unqualified.

@@ -426,15 +426,15 @@ Datatype declarations
 Class declarations
 
 > optcbody :: { [HsDecl] }
->	: 'where' decllist			{ $2 }
->	| {- empty -}				{ [] }
+>	: 'where' decllist		{% checkClassBody $2 }
+>	| {- empty -}			{ [] }
 
 -----------------------------------------------------------------------------
 Instance declarations
 
 > optvaldefs :: { [HsDecl] }
->	: 'where' '{'  valdefs '}'	{ $3 }
->	| 'where' open valdefs close	{ $3 }
+>	: 'where' '{'  valdefs '}'	{% checkClassBody $3 }
+>	| 'where' open valdefs close	{% checkClassBody $3 }
 >	| {- empty -}			{ [] }
 
 > valdefs :: { [HsDecl] }
