@@ -5,7 +5,7 @@
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
 -- 
 -- Maintainer  :  libraries@haskell.org
--- Stability   :  provisional
+-- Stability   :  experimental
 -- Portability :  portable
 --
 -- Abstract syntax definitions for Template Haskell.
