@@ -54,7 +54,7 @@ gensym s = Q( do { n <- readIORef counter
                  ; return(s++"'"++(show n)) })
 
 class Lift t where
-  lift :: t -> Expr
+  lift :: t -> ExpQ
   
 instance Lift Integer where
   lift = return . Lit . Integer
@@ -96,15 +96,15 @@ data Pat
   | Ptilde Pat                    -- { ~p }
   | Paspat String Pat             -- { x @ p }
   | Pwild                         -- { _ }
-  | Prec String [(String,Pat)]    -- f (Pt { pointx = x }) = g x
+  | Prec String [FieldPat]        -- f (Pt { pointx = x }) = g x
   deriving( Show )
 
-type FldP = (String,Pat)
+type FieldPat = (String,Pat)
 
-data Match p e d  = Mat p (RightHandSide e) [d]
+data Match = Match Pat RightHandSide [Dec]
                                     -- case e of { pat -> body where decs } 
     deriving Show
-data Clause p e d = Clause [p] (RightHandSide e) [d]
+data Clause = Clause [Pat] RightHandSide [Dec]
                                     -- f { p1 p2 = body where decs }
     deriving Show
  
@@ -125,43 +125,43 @@ data Exp
   | Tup [Exp]                            -- { (e1,e2) }  
   | Cond Exp Exp Exp                     -- { if e1 then e2 else e3 }
   | Let [Dec] Exp                        -- { let x=e1;   y=e2 in e3 }
-  | Case Exp [Match Pat Exp Dec]         -- { case e of m1; m2 }
-  | Do [Statement Pat Exp Dec]           -- { do { p <- e1; e2 }  }
-  | Comp [Statement Pat Exp Dec]         -- { [ (x,y) | x <- xs, y <- ys ] }
-  | ArithSeq (DotDot Exp)                -- { [ 1 ,2 .. 10 ] }
+  | Case Exp [Match]                     -- { case e of m1; m2 }
+  | Do [Statement]                       -- { do { p <- e1; e2 }  }
+  | Comp [Statement]                     -- { [ (x,y) | x <- xs, y <- ys ] }
+  | ArithSeq DotDot                      -- { [ 1 ,2 .. 10 ] }
   | ListExp [ Exp ]                      -- { [1,2,3] }
-  | SigExp Exp Typ			 -- e :: t
-  | RecCon String [(String,Exp)]  -- { T { x = y, z = w } }
-  | RecUpd Exp [(String,Exp)]  -- { (f x) { z = w } }
+  | SigExp Exp Typ                       -- e :: t
+  | RecCon String [FieldExp]             -- { T { x = y, z = w } }
+  | RecUpd Exp [FieldExp]                -- { (f x) { z = w } }
   deriving( Show )
 
-type FldE = Q (String,Exp)
+type FieldExp = (String,Exp)
 
 -- Omitted: implicit parameters
 
-data RightHandSide e
-  = Guarded [(e,e)]       -- f p { | e1 = e2 | e3 = e4 } where ds
-  | Normal e              -- f p { = e } where ds
+data RightHandSide
+  = Guarded [(Exp,Exp)]     -- f p { | e1 = e2 | e3 = e4 } where ds
+  | Normal Exp              -- f p { = e } where ds
   deriving( Show )
 
-data Statement p e d
-  = BindSt p e
-  | LetSt [ d ]
-  | NoBindSt e
-  | ParSt [[Statement p e d]]
+data Statement
+  = BindSt Pat Exp
+  | LetSt [ Dec ]
+  | NoBindSt Exp
+  | ParSt [[Statement]]
   deriving( Show )
 
-data DotDot e = From e | FromThen e e | FromTo e e | FromThenTo e e e 
+data DotDot = From Exp | FromThen Exp Exp | FromTo Exp Exp | FromThenTo Exp Exp Exp 
 	      deriving( Show )
   
 data Dec 
-  = Fun String [Clause Pat Exp Dec]     -- { f p1 p2 = b where decs }
-  | Val Pat (RightHandSide Exp) [Dec]   -- { p = b where decs }
+  = Fun String [Clause]                 -- { f p1 p2 = b where decs }
+  | Val Pat RightHandSide [Dec]         -- { p = b where decs }
   | Data Cxt String [String] 
-         [Con] [String]         	-- { data Cxt x => T x = A x | B (T x) deriving (Z,W)}
-  | TySyn String [String] Typ		-- { type T x = (x,x) }
-  | Class Cxt String [String] [Dec]	-- { class Eq a => Ord a where ds }
-  | Instance Cxt Typ [Dec]   	 	-- { instance Show w => Show [w] where ds }
+         [Con] [String]                 -- { data Cxt x => T x = A x | B (T x) deriving (Z,W)}
+  | TySyn String [String] Typ           -- { type T x = (x,x) }
+  | Class Cxt String [String] [Dec]     -- { class Eq a => Ord a where ds }
+  | Instance Cxt Typ [Dec]              -- { instance Show w => Show [w] where ds }
   | Proto String Typ                    -- { length :: [a] -> Int }
   | Foreign Foreign
   deriving( Show )
@@ -206,37 +206,24 @@ data Typ = TForall [String] Cxt Typ  -- forall <vars>. <ctxt> -> <type>
 ---------------------------------------------------
 -- Combinator based types
 
-type Expr = Q Exp
-type Decl = Q Dec
-type Cons = Q Con
-type Type = Q Typ
-type Patt = Pat		-- No need for Q here
-  -- FIXME: I think it is more annoying having an exception here, rather than
-  --   wrapping Pat unnecessarily into Q  -=chak
-type Ctxt = Q Cxt
+type ExpQ = Q Exp
+type DecQ = Q Dec
+type ConQ = Q Con
+type TypQ = Q Typ
+type CxtQ = Q Cxt
+type MatchQ = Q Match
+type ClauseQ = Q Clause
+type RightHandSideQ = Q RightHandSide
+type StatementQ = Q Statement
+type DotDotQ = Q DotDot
 
-type Mat  = Match Pat Exp Dec
-type Mtch = Q Mat
-
-type Cls  = Clause Pat Exp Dec
-type Clse = Q Cls
-
-type Rhs  = RightHandSide Exp
-type Rihs = Q Rhs
-
-type Stm  = Statement Pat Exp Dec
-type Stmt = Q Stm
-
-type DDt  = DotDot Exp
-type DDot = Q DDt
-
---runE :: Expr -> Exp
+--runE :: ExpQ -> Exp
 --runE x = runQ 0 x
 
 --runP :: Pattern -> Pat
 runP x = x
 
---runD :: Decl -> Dec
+--runD :: DecQ -> Dec
 --runD d = runQ 0 d
 
 
@@ -258,32 +245,32 @@ paspat = Paspat
 pwild = Pwild
 prec = Prec
 
-fieldP :: String -> Patt -> (String, Pat)
-fieldP = (,)
+fieldPat :: String -> Pat -> (String, Pat)
+fieldPat = (,)
 
 
 --------------------------------------------------------------------------------
--- 	Stmt
+-- 	Statement
 
-bindSt :: Patt -> Expr -> Stmt
-bindSt p e = do { e1 <- e; return (BindSt p e1) }
+bindSt :: Pat -> ExpQ -> StatementQ
+bindSt p e = liftM (BindSt p) e
 
-letSt :: [Decl] -> Stmt
+letSt :: [DecQ] -> StatementQ
 letSt ds = do { ds1 <- sequence ds; return (LetSt ds1) }
 
-noBindSt :: Expr -> Stmt
+noBindSt :: ExpQ -> StatementQ
 noBindSt e = do { e1 <- e; return (NoBindSt e1) }
 
-parSt :: [[Stmt]] -> Stmt
+parSt :: [[StatementQ]] -> StatementQ
 parSt zs = fail "No parallel comprehensions yet"
 
 --------------------------------------------------------------------------------
 -- 	RightHandSide
 
-normal :: Expr -> Rihs
+normal :: ExpQ -> RightHandSideQ
 normal e = do { e1 <- e; return (Normal e1) }
 
-guarded :: [(Expr,Expr)] -> Rihs
+guarded :: [(ExpQ,ExpQ)] -> RightHandSideQ
 guarded gs = do { gs1 <- mapM f gs; return (Guarded gs1) }
 	   where
 		f (g,e) = do { g1 <- g; e1 <- e; return (g1,e1) }
@@ -291,32 +278,36 @@ guarded gs = do { gs1 <- mapM f gs; return (Guarded gs1) }
 --------------------------------------------------------------------------------
 -- 	Match and Clause
 
-match :: Patt -> Rihs -> [Decl] -> Mtch
-match p rhs ds = do { r' <- rhs; ds' <- sequence ds; return (Mat p r' ds') }
+match :: Pat -> RightHandSideQ -> [DecQ] -> MatchQ
+match p rhs ds = do { r' <- rhs;
+                      ds' <- sequence ds;
+                      return (Match p r' ds') }
 
-clause :: [Patt] -> Rihs -> [Decl] -> Clse
-clause ps r ds = do { r' <- r; ds' <- sequence ds; return (Clause ps r' ds') }
+clause :: [Pat] -> RightHandSideQ -> [DecQ] -> ClauseQ
+clause ps r ds = do { r' <- r;
+                      ds' <- sequence ds;
+                      return (Clause ps r' ds') }
 
 
 ---------------------------------------------------------------------------
--- 	Expr
+-- 	Exp
 
-global :: String -> Expr
+global :: String -> ExpQ
 global s = return (Var s)
 
-var :: String -> Expr
+var :: String -> ExpQ
 var s = return (Var s)
 
-con :: String -> Expr
+con :: String -> ExpQ
 con s =  return (Con s)
 
-lit :: Lit -> Expr
+lit :: Lit -> ExpQ
 lit c = return (Lit c)
 
-app :: Expr -> Expr -> Expr
+app :: ExpQ -> ExpQ -> ExpQ
 app x y = do { a <- x; b <- y; return (App a b)}
 
-infixE :: Maybe Expr -> Expr -> Maybe Expr -> Expr
+infixE :: Maybe ExpQ -> ExpQ -> Maybe ExpQ -> ExpQ
 infixE (Just x) s (Just y) = do { a <- x; s' <- s; b <- y; return (Infix (Just a) s' (Just b))}
 infixE Nothing  s (Just y) = do { s' <- s; b <- y; return (Infix Nothing s' (Just b))}
 infixE (Just x) s Nothing  = do { a <- x; s' <- s; return (Infix (Just a) s' Nothing)}
@@ -326,94 +317,94 @@ infixApp x y z = infixE (Just x) y (Just z)
 sectionL x y = infixE (Just x) y Nothing
 sectionR x y = infixE Nothing x (Just y)
 
-from :: Expr -> Expr
+from :: ExpQ -> ExpQ
 from x = do { a <- x; return (ArithSeq (From a)) }  
 
-fromThen :: Expr -> Expr -> Expr
+fromThen :: ExpQ -> ExpQ -> ExpQ
 fromThen x y = do { a <- x; b <- y; return (ArithSeq (FromThen a b)) }  
 
-fromTo :: Expr -> Expr -> Expr
+fromTo :: ExpQ -> ExpQ -> ExpQ
 fromTo x y = do { a <- x; b <- y; return (ArithSeq (FromTo a b)) }  
 
-fromThenTo :: Expr -> Expr -> Expr -> Expr
+fromThenTo :: ExpQ -> ExpQ -> ExpQ -> ExpQ
 fromThenTo x y z = do { a <- x; b <- y; c <- z; return (ArithSeq (FromThenTo a b c)) }  
 
-lam :: [Patt] -> Expr -> Expr
-lam ps e = do { e2 <- e ; return (Lam ps e2) }
+lam :: [Pat] -> ExpQ -> ExpQ
+lam ps e = liftM (Lam ps) e
 
-lam1 :: Patt -> Expr -> Expr	-- Single-arg lambda
-lam1 p e = lam [p] e              
+lam1 :: Pat -> ExpQ -> ExpQ	-- Single-arg lambda
+lam1 p e = lam [p] e
 
-tup :: [Expr] -> Expr
+tup :: [ExpQ] -> ExpQ
 tup es = do { es1 <- sequence es; return (Tup es1)}
 
-cond :: Expr -> Expr -> Expr -> Expr
+cond :: ExpQ -> ExpQ -> ExpQ -> ExpQ
 cond x y z =  do { a <- x; b <- y; c <- z; return (Cond a b c)}
 
-letE :: [Decl] -> Expr -> Expr
+letE :: [DecQ] -> ExpQ -> ExpQ
 letE ds e = do { ds2 <- sequence ds; e2 <- e; return (Let ds2 e2) }
 
-caseE :: Expr -> [Mtch] -> Expr
+caseE :: ExpQ -> [MatchQ] -> ExpQ
 caseE e ms = do { e1 <- e; ms1 <- sequence ms; return (Case e1 ms1) } 
 
-doE :: [Stmt] -> Expr
+doE :: [StatementQ] -> ExpQ
 doE ss = do { ss1 <- sequence ss; return (Do ss1) } 
 
-comp :: [Stmt] -> Expr
+comp :: [StatementQ] -> ExpQ
 comp ss = do { ss1 <- sequence ss; return (Comp ss1) } 
 
-listExp :: [Expr] -> Expr
+listExp :: [ExpQ] -> ExpQ
 listExp es = do { es1 <- sequence es; return (ListExp es1) }
 
-sigExp :: Expr -> Type -> Expr
+sigExp :: ExpQ -> TypQ -> ExpQ
 sigExp e t = do { e1 <- e; t1 <- t; return (SigExp e1 t1) }
 
-recCon :: String -> [Q (String,Exp)] -> Expr
+recCon :: String -> [Q (String,Exp)] -> ExpQ
 recCon c fs = do { flds <- sequence fs; return (RecCon c flds) }
 
-recUpd :: Expr -> [Q (String,Exp)] -> Expr
+recUpd :: ExpQ -> [Q (String,Exp)] -> ExpQ
 recUpd e fs = do { e1 <- e; flds <- sequence fs; return (RecUpd e1 flds) }
 
-string :: String -> Expr
+string :: String -> ExpQ
 string = lit . String
 
-field :: String -> Expr -> Q (String, Exp)
-field s e = do { e' <- e; return (s,e') }
+fieldExp :: String -> ExpQ -> Q (String, Exp)
+fieldExp s e = do { e' <- e; return (s,e') }
 
 --------------------------------------------------------------------------------
--- 	Decl
+-- 	Dec
 
-val :: Patt -> Rihs -> [Decl] -> Decl
+val :: Pat -> RightHandSideQ -> [DecQ] -> DecQ
 val p b ds = 
-  do { ds1 <- sequence ds
-     ; b1 <- b
-     ; return(Val p b1 ds1)
+  do { ds' <- sequence ds
+     ; b' <- b
+     ; return (Val p b' ds')
      }
 
-fun :: String -> [Clse] -> Decl     
+fun :: String -> [ClauseQ] -> DecQ
 fun nm cs = 
  do { cs1 <- sequence cs
     ; return (Fun nm cs1)
     }
 
-tySynD :: String -> [String] -> Type -> Decl
+tySynD :: String -> [String] -> TypQ -> DecQ
 tySynD tc tvs rhs = do { rhs1 <- rhs; return (TySyn tc tvs rhs1) }
 
-dataD :: Ctxt -> String -> [String] -> [Cons] -> [String] -> Decl
+dataD :: CxtQ -> String -> [String] -> [ConQ] -> [String] -> DecQ
 dataD ctxt tc tvs cons derivs =
   do
     ctxt1 <- ctxt
     cons1 <- sequence cons
     return (Data ctxt1 tc tvs cons1 derivs)
 
-classD :: Ctxt -> String -> [String] -> [Decl] -> Decl
+classD :: CxtQ -> String -> [String] -> [DecQ] -> DecQ
 classD ctxt cls tvs decs =
   do 
     decs1 <- sequence decs
     ctxt1 <- ctxt
     return $ Class ctxt1 cls tvs decs1
 
-inst :: Ctxt -> Type -> [Decl] -> Decl
+inst :: CxtQ -> TypQ -> [DecQ] -> DecQ
 inst ctxt ty decs =
   do 
     ctxt1 <- ctxt
@@ -421,63 +412,63 @@ inst ctxt ty decs =
     ty1   <- ty
     return $ Instance ctxt1 ty1 decs1
 
-proto :: String -> Type -> Decl
+proto :: String -> TypQ -> DecQ
 proto fun ty = liftM (Proto fun) $ ty
 
-ctxt :: [Type] -> Ctxt
-ctxt = sequence
+cxt :: [TypQ] -> CxtQ
+cxt = sequence
 
-constr :: String -> [Q (Strictness, Typ)] -> Cons
+constr :: String -> [Q (Strictness, Typ)] -> ConQ
 constr con strtys = liftM (Constr con) $ sequence strtys
 
-recConstr :: String -> [Q (String, Strictness, Typ)] -> Cons
+recConstr :: String -> [Q (String, Strictness, Typ)] -> ConQ
 recConstr con varstrtys = liftM (RecConstr con) $ sequence varstrtys
 
-infixConstr :: Q (Strictness, Typ) -> String -> Q (Strictness, Typ) -> Cons
+infixConstr :: Q (Strictness, Typ) -> String -> Q (Strictness, Typ) -> ConQ
 infixConstr st1 con st2 = do st1' <- st1
                              st2' <- st2
                              return $ InfixConstr st1' con st2'
 
 
 --------------------------------------------------------------------------------
--- 	Type
+-- 	Typ
 
-tforall :: [String] -> Ctxt -> Type -> Type
+tforall :: [String] -> CxtQ -> TypQ -> TypQ
 tforall tvars ctxt ty = do
   do
     ctxt1 <- ctxt
     ty1   <- ty
     return $ TForall tvars ctxt1 ty1
 
-tvar :: String -> Type
+tvar :: String -> TypQ
 tvar = return . Tvar
 
-tcon :: Tag -> Type
+tcon :: Tag -> TypQ
 tcon = return . Tcon
 
-tapp :: Type -> Type -> Type
+tapp :: TypQ -> TypQ -> TypQ
 tapp t1 t2 = do
 	       t1' <- t1
 	       t2' <- t2
 	       return $ Tapp t1' t2'
 
-arrowTyCon :: Type
+arrowTyCon :: TypQ
 arrowTyCon = return $ Tcon Arrow
 
-listTyCon :: Type
+listTyCon :: TypQ
 listTyCon = return $ Tcon List
 
-tupleTyCon :: Int -> Type
+tupleTyCon :: Int -> TypQ
 tupleTyCon i = return $ Tcon (Tuple i)
 
-namedTyCon :: String -> Type
+namedTyCon :: String -> TypQ
 namedTyCon s = return $ Tcon (TconName s)
 
 strict, nonstrict :: Q Strictness
 strict = return $ Strict
 nonstrict = return $ NonStrict
 
-strictType :: Q Strictness -> Type -> Q (Strictness, Typ)
+strictType :: Q Strictness -> TypQ -> Q (Strictness, Typ)
 strictType = liftM2 (,)
 
 varStrictType :: String -> Q (Strictness, Typ) -> Q (String, Strictness, Typ)
@@ -515,12 +506,12 @@ alpha env s = case lookup s env of
 genPE s n = let ns = [ s++(show i) | i <- [1..n]]
             in (map pvar ns,map var ns)
 
-apps :: [Expr] -> Expr
+apps :: [ExpQ] -> ExpQ
 apps [x] = x
 apps (x:y:zs) = apps ( (app x y) : zs )
 
-simpleM :: Pat -> Exp -> Mat
-simpleM p e = Mat p (Normal e) []
+simpleM :: Pat -> Exp -> Match
+simpleM p e = Match p (Normal e) []
 
 
 --------------------------------------------------------------
@@ -598,7 +589,7 @@ pprMaybeExp _ Nothing = empty
 pprMaybeExp i (Just e) = pprExpI i e
 
 ------------------------------
-pprStatement :: Statement Pat Exp Dec -> Doc
+pprStatement :: Statement -> Doc
 pprStatement (BindSt p e) = pprPat p <+> text "<-" <+> pprExp e
 pprStatement (LetSt ds) = text "let" <+> vcat (map pprDec ds)
 pprStatement (NoBindSt e) = pprExp e
@@ -606,17 +597,17 @@ pprStatement (ParSt sss) = sep $ punctuate (text "|")
                          $ map (sep . punctuate comma . map pprStatement) sss
 
 ------------------------------
-pprMatch :: Match Pat Exp Dec -> Doc
-pprMatch (Mat p rhs ds) = pprPat p <+> pprRhs False rhs
-                       $$ where_clause ds
+pprMatch :: Match -> Doc
+pprMatch (Match p rhs ds) = pprPat p <+> pprRhs False rhs
+                         $$ where_clause ds
 
 ------------------------------
-pprRhs :: Bool -> RightHandSide Exp -> Doc
+pprRhs :: Bool -> RightHandSide -> Doc
 pprRhs eq (Guarded xs) = nest nestDepth $ vcat $ map do_guard xs
   where eqd = if eq then text "=" else text "->"
         do_guard (lhs, rhs) = text "|" <+> pprExp lhs <+> eqd <+> pprExp rhs
 pprRhs eq (Normal e) = (if eq then text "=" else text "->")
-                       <+> pprExp e
+                   <+> pprExp e
 
 ------------------------------
 pprLit :: Precedence -> Lit -> Doc
@@ -679,7 +670,7 @@ pprForeign (Import callconv safety impent as typ) = text "foreign import"
                                                 <+> text "::" <+> pprTyp typ
 
 ------------------------------
-pprClause :: Clause Pat Exp Dec -> Doc
+pprClause :: Clause -> Doc
 pprClause (Clause ps rhs ds) = hsep (map pprPat ps) <+> pprRhs True rhs
                             $$ where_clause ds
 
@@ -755,10 +746,10 @@ pprCxt [t] = pprTyp t <+> text "=>"
 pprCxt ts = parens (hsep $ punctuate comma $ map pprTyp ts) <+> text "=>"
 
 ------------------------------
-pprDotDot :: DotDot Exp -> Doc
+pprDotDot :: DotDot -> Doc
 pprDotDot = brackets . pprDotDotI
 
-pprDotDotI :: DotDot Exp -> Doc
+pprDotDotI :: DotDot -> Doc
 pprDotDotI (From e) = pprExp e <> text ".."
 pprDotDotI (FromThen e1 e2) = pprExp e1 <> text ","
                            <> pprExp e2 <> text ".."
