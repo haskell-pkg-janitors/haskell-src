@@ -87,8 +87,10 @@ data Pat
   | Ptilde Pat                    -- { ~p }
   | Paspat String Pat             -- { x @ p }
   | Pwild                         -- { _ }
+  | Prec String [(String,Pat)]    -- f (Pt { pointx = x }) = g x
   deriving( Show )
 
+type FldP = (String,Pat)
 
 data Match p e d  = Mat p (RightHandSide e) [d]
                                     -- case e of { pat -> body where decs } 
@@ -120,7 +122,11 @@ data Exp
   | ArithSeq (DotDot Exp)                -- { [ 1 ,2 .. 10 ] }
   | ListExp [ Exp ]                      -- { [1,2,3] }
   | SigExp Exp Typ			 -- e :: t
+  | RecCon String [(String,Exp)]  -- { T { x = y, z = w } }
+  | RecUpd Exp [(String,Exp)]  -- { (f x) { z = w } }
   deriving( Show )
+
+type FldE = Q (String,Exp)
 
 -- Omitted: implicit parameters
 
@@ -142,8 +148,8 @@ data DotDot e = From e | FromThen e e | FromTo e e | FromThenTo e e e
 data Dec 
   = Fun String [Clause Pat Exp Dec]     -- { f p1 p2 = b where decs }
   | Val Pat (RightHandSide Exp) [Dec]   -- { p = b where decs }
-  | Data String [String] 
-         [Con] [String]         	-- { data T x = A x | B (T x) deriving (Z,W)}
+  | Data Cxt String [String] 
+         [Con] [String]         	-- { data Cxt x => T x = A x | B (T x) deriving (Z,W)}
   | TySyn String [String] Typ		-- { type T x = (x,x) }
   | Class Cxt String [String] [Dec]	-- { class Eq a => Ord a where ds }
   | Instance Cxt Typ [Dec]   	 	-- { instance Show w => Show [w] where ds }
@@ -241,6 +247,10 @@ pcon = Pcon
 ptilde = Ptilde
 paspat = Paspat
 pwild = Pwild
+prec = Prec
+
+fieldP :: String -> Patt -> (String, Pat)
+fieldP = (,)
 
 
 --------------------------------------------------------------------------------
@@ -349,8 +359,17 @@ listExp es = do { es1 <- sequence es; return (ListExp es1) }
 sigExp :: Expr -> Type -> Expr
 sigExp e t = do { e1 <- e; t1 <- t; return (SigExp e1 t1) }
 
+recCon :: String -> [Q (String,Exp)] -> Expr
+recCon c fs = do { flds <- sequence fs; return (RecCon c flds) }
+
+recUpd :: Expr -> [Q (String,Exp)] -> Expr
+recUpd e fs = do { e1 <- e; flds <- sequence fs; return (RecUpd e1 flds) }
+
 string :: String -> Expr
 string = lit . String
+
+field :: String -> Expr -> Q (String, Exp)
+field s e = do { e' <- e; return (s,e') }
 
 --------------------------------------------------------------------------------
 -- 	Decl
@@ -371,9 +390,12 @@ fun nm cs =
 tySynD :: String -> [String] -> Type -> Decl
 tySynD tc tvs rhs = do { rhs1 <- rhs; return (TySyn tc tvs rhs1) }
 
-dataD :: String -> [String] -> [Cons] -> [String] -> Decl
-dataD tc tvs cons derivs
-  = do { cons1 <- sequence cons; return (Data tc tvs cons1 derivs) }
+dataD :: Ctxt -> String -> [String] -> [Cons] -> [String] -> Decl
+dataD ctxt tc tvs cons derivs =
+  do
+    ctxt1 <- ctxt
+    cons1 <- sequence cons
+    return (Data ctxt1 tc tvs cons1 derivs)
 
 classD :: Ctxt -> String -> [String] -> [Decl] -> Decl
 classD ctxt cls tvs decs =
@@ -605,7 +627,9 @@ pprDec (Val p r ds) = pprPat p <+> pprRhs True r
                       $$ where_clause ds
 pprDec (TySyn t xs rhs) = text "type" <+> text t <+> hsep (map text xs) 
 				<+> text "=" <+> pprTyp rhs
-pprDec (Data t xs cs ds) = text "data" <+> text t <+> hsep (map text xs)
+pprDec (Data cxt t xs cs ds) = text "data"
+                       <+> pprCxt cxt
+                       <+> text t <+> hsep (map text xs)
                        <+> sep (pref $ map pprCon cs)
                         $$ if null ds
                            then empty
