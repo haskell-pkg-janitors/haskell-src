@@ -1,6 +1,5 @@
 THISPKG	= haskell-src
 SEARCH	=
-EXTRA_H_FLAGS = +RTS -K6M -RTS
 
 SRCS	= \
 	Language/Haskell/Lexer.hs Language/Haskell/ParseMonad.hs \
