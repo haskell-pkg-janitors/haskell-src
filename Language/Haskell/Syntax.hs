@@ -43,6 +43,8 @@ module Language.Haskell.Syntax (
 
     -- ** Modules
     prelude_mod, main_mod,
+    -- ** Main function of a program
+    main_name,
     -- ** Constructors
     unit_con_name, tuple_con_name,
     unit_con, tuple_con,
@@ -325,6 +327,9 @@ data HsGuardedAlt
 prelude_mod, main_mod :: Module
 prelude_mod	      = Module "Prelude"
 main_mod	      = Module "Main"
+
+main_name :: HsName
+main_name	      = HsIdent "main"
 
 unit_con_name :: HsQName
 unit_con_name	      = Qual prelude_mod (HsSpecial "()")

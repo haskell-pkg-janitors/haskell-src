@@ -126,7 +126,8 @@ Module Header
 >	: srcloc 'module' modid maybeexports 'where' body
 >		{ HsModule $1 $3 $4 (fst $6) (snd $6) }
 >	| srcloc body
->		{ HsModule $1 main_mod Nothing (fst $2) (snd $2) }
+>		{ HsModule $1 main_mod (Just [HsEVar (UnQual main_name)])
+>							(fst $2) (snd $2) }
 
 > body :: { ([HsImportDecl],[HsDecl]) }
 >	: '{'  bodyaux '}'			{ $2 }
