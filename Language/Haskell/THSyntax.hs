@@ -59,6 +59,9 @@ class Lift t where
 instance Lift Integer where
   lift = return . Lit . Integer
 
+instance Lift Int where
+  lift = return . Lit . Integer . fromIntegral
+
 instance Lift Char where
   lift = return . Lit . Char
 
@@ -73,11 +76,17 @@ instance Lift a => Lift [a] where
 
 ------------------------------------------------------
 
-data Lit = Integer Integer 
-	 | Char Char 
+data Lit = Char Char 
 	 | String String 
-	 | Rational Rational 
+	 | Integer Integer 	-- Used for overloaded and non-overloaded literals
+				-- We don't have a good way to represent non-overloaded
+				-- literals at the moment.  Maybe that doesn't matter?
+	 | Rational Rational 	-- Ditto
 	 deriving( Show )
+
+	-- We could add Int, Float, Double etc, as we do in HsLit, 
+	-- but that could complicate the
+	-- suppposedly-simple THSyntax literal type
 
 data Pat 
   = Plit Lit                      -- { 5 or 'c' }
@@ -612,8 +621,8 @@ pprRhs eq (Normal e) = (if eq then text "=" else text "->")
 ------------------------------
 pprLit :: Precedence -> Lit -> Doc
 pprLit i (Integer x) = parensIf (i > noPrec && x < 0) (integer x)
-pprLit _ (Char c) = text (show c)
-pprLit _ (String s) = text (show s)
+pprLit _ (Char c)    = text (show c)
+pprLit _ (String s)  = text (show s)
 pprLit i (Rational rat) = parensIf (i > noPrec) $ text $ show rat
 
 ------------------------------
