@@ -1,5 +1,5 @@
 THISPKG	= haskell-src
-SEARCH	= -I$(TOPDIR)/targets/$(MACHINE)
+SEARCH	=
 EXTRA_H_FLAGS = +RTS -K6M -RTS
 
 SRCS	= \
