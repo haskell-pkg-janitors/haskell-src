@@ -2,6 +2,7 @@ module Language.Haskell.THSyntax where
 
 import Data.IORef ( IORef, newIORef, readIORef, writeIORef )
 import System.IO.Unsafe( unsafePerformIO )
+import Text.PrettyPrint.HughesPJ
 
 -------------------------------------------------------
 -- The Q monad as IO
@@ -135,6 +136,45 @@ runP x = x
 
 --runD :: Decl -> Dec
 --runD d = runQ 0 d
+
+
+-------------------------------------------------------
+-- Pretty printing
+
+pprParendTyp :: Typ -> Doc
+pprParendTyp (Tvar s) = text s
+pprParendTyp (Tcon t) = pprTcon t
+pprParendTyp other    = parens (pprTyp other)
+
+pprTyp :: Typ -> Doc
+pprTyp ty = pprTyApp (split ty)
+
+pprTyApp (Tcon Arrow, [arg1,arg2])
+  = sep [pprTyp arg1 <+> text "->", pprTyp arg2]
+
+pprTyApp (Tcon List, [arg])
+  = brackets (pprTyp arg)
+
+pprTyApp (Tcon (Tuple n), args)
+  | length args == n
+  = parens (sep (punctuate comma (map pprTyp args)))
+
+pprTyApp (fun, args)
+  = pprParendTyp fun <+> sep (map pprParendTyp args)
+
+pprTcon :: Tag -> Doc
+pprTcon (Tuple 0)    = text "()"
+pprTcon (Tuple n)    = parens (hcat (replicate (n-1) comma))
+pprTcon Arrow	     = parens (text "->")
+pprTcon List	     = text "[]"
+pprTcon (TconName s) = text s
+
+split :: Typ -> (Typ, [Typ])	-- Split into function and args
+split t = go t []
+	where
+	  go (Tvar s) 	  args = (Tvar s, args)
+	  go (Tcon t) 	  args = (Tcon t, args)
+	  go (Tapp t1 t2) args = go t1 (t2:args)
 
 
 
