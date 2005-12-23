@@ -21,7 +21,7 @@ module Language.Haskell.Lexer (Token(..), lexer) where
 
 import Language.Haskell.ParseMonad
 
-import Data.Char	(isAlpha, isLower, isUpper, toLower, toUpper,
+import Data.Char	(isAlpha, isLower, isUpper, toLower,
 			 isDigit, isHexDigit, isOctDigit, isSpace,
 			 ord, chr, digitToInt)
 import Data.Ratio
