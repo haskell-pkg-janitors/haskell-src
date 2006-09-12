@@ -15,7 +15,6 @@ exposed-modules:
 	Language.Haskell.ParseMonad,
 	Language.Haskell.Pretty,
 	Language.Haskell.Syntax
-other-modules:
 	Language.Haskell.ParseUtils
 build-depends:	base, haskell98
 		-- The dependency on Haskell 98 is only because
