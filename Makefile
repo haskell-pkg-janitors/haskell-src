@@ -16,6 +16,8 @@ PACKAGE_DEPS = base
 
 Language/Haskell/Parser_HC_OPTS += -Onot -fno-warn-incomplete-patterns
 
+EXCLUDED_SRCS += Setup.hs
+
 SRC_HADDOCK_OPTS += -t "Haskell Hierarchical Libraries ($(PACKAGE) package)"
 
 # -----------------------------------------------------------------------------
