@@ -89,7 +89,6 @@ Reserved operators
 
 Reserved Ids
 
->	'as'		{ KW_As }
 >	'case'		{ KW_Case }
 >	'class'		{ KW_Class }
 >	'data'		{ KW_Data }
@@ -97,7 +96,7 @@ Reserved Ids
 >	'deriving'	{ KW_Deriving }
 >	'do'		{ KW_Do }
 >	'else'		{ KW_Else }
->	'hiding'	{ KW_Hiding }
+>	'foreign'	{ KW_Foreign }
 >	'if'		{ KW_If }
 >	'import'	{ KW_Import }
 >	'in'		{ KW_In }
@@ -112,7 +111,15 @@ Reserved Ids
 >	'then'		{ KW_Then }
 >	'type'		{ KW_Type }
 >	'where'		{ KW_Where }
+
+Special Ids
+
+>	'as'		{ KW_As }
+>	'export'	{ KW_Export }
+>	'hiding'	{ KW_Hiding }
 >	'qualified'	{ KW_Qualified }
+>	'safe'		{ KW_Safe }
+>	'unsafe'	{ KW_Unsafe }
 
 > %monad { P }
 > %lexer { lexer } { EOF }
@@ -274,6 +281,7 @@ shift/reduce-conflict, so we don't handle this case here, but in bodyaux.
 >				return (HsInstDecl $1 cs c ts $4) } }
 >	| srcloc 'default' '(' typelist ')'
 >			{ HsDefaultDecl $1 $4 }
+>	| foreigndecl	{ $1 }
 >       | decl		{ $1 }
 
 > typelist :: { [HsType] }
@@ -316,6 +324,30 @@ would require more lookahead. So let's check for ourselves...
 >	: vars ',' var			{ $3 : $1 }
 >	| qvar				{% do { n <- checkUnQual $1;
 >						return [n] } }
+
+Foreign declarations
+- calling conventions are uninterpreted
+- external entities are not parsed
+- special ids are not allowed as internal names
+
+> foreigndecl :: { HsDecl }
+>	: srcloc 'foreign' 'import' VARID optsafety optentity fvar '::' type
+>			{ HsForeignImport $1 $4 $5 $6 $7 $9 }
+>	| srcloc 'foreign' 'export' VARID optentity fvar '::' type
+>			{ HsForeignExport $1 $4 $5 $6 $8 }
+
+> optsafety :: { HsSafety }
+>	: 'safe'			{ HsSafe }
+>	| 'unsafe'			{ HsUnsafe }
+>	| {- empty -}			{ HsSafe }
+
+> optentity :: { String }
+>	: STRING			{ $1 }
+>	| {- empty -}			{ "" }
+
+> fvar :: { HsName }
+>	: VARID				{ HsIdent $1 }
+>	| '(' varsym ')'		{ $2 }
 
 -----------------------------------------------------------------------------
 Types
@@ -726,9 +758,12 @@ Identifiers and Symbols
 
 > varid :: { HsName }
 >	: VARID			{ HsIdent $1 }
->	| 'as'			{ as_name }
->	| 'qualified'		{ qualified_name }
->	| 'hiding'		{ hiding_name }
+>	| 'as'			{ HsIdent "as" }
+>	| 'export'		{ HsIdent "export" }
+>	| 'hiding'		{ HsIdent "hiding" }
+>	| 'qualified'		{ HsIdent "qualified" }
+>	| 'safe'		{ HsIdent "safe" }
+>	| 'unsafe'		{ HsIdent "unsafe" }
 
 > qconid :: { HsQName }
 >	: conid			{ UnQual $1 }
@@ -754,12 +789,12 @@ Identifiers and Symbols
 
 > varsym :: { HsName }
 >	: VARSYM		{ HsSymbol $1 }
->	| '-'			{ minus_name }
->	| '!'			{ pling_name }
+>	| '-'			{ HsSymbol "-" }
+>	| '!'			{ HsSymbol "!" }
 
 > varsymm :: { HsName } -- varsym not including '-'
 >	: VARSYM		{ HsSymbol $1 }
->	| '!'			{ pling_name }
+>	| '!'			{ HsSymbol "!" }
 
 > qvarsym1 :: { HsQName }
 >	: QVARSYM		{ Qual (Module (fst $1)) (HsSymbol (snd $1)) }

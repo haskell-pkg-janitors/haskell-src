@@ -372,6 +372,20 @@ instance Pretty HsDecl where
 		mySep ((punctuate comma . map pretty $ nameList)
 		      ++ [text "::", pretty qualType])
 
+	pretty (HsForeignImport pos conv safety entity name ty) =
+		blankline $
+		markLine pos $
+		mySep $ [text "foreign", text "import", text conv, pretty safety] ++
+			(if null entity then [] else [text (show entity)]) ++
+			[pretty name, text "::", pretty ty]
+
+	pretty (HsForeignExport pos conv entity name ty) =
+		blankline $
+		markLine pos $
+		mySep $ [text "foreign", text "export", text conv] ++
+			(if null entity then [] else [text (show entity)]) ++
+			[pretty name, text "::", pretty ty]
+
 	pretty (HsFunBind matches) =
 		foldr ($$$) empty (map pretty matches)
 
@@ -389,6 +403,10 @@ instance Pretty HsAssoc where
 	pretty HsAssocNone  = text "infix"
 	pretty HsAssocLeft  = text "infixl"
 	pretty HsAssocRight = text "infixr"
+
+instance Pretty HsSafety where
+	pretty HsSafe    = text "safe"
+	pretty HsUnsafe  = text "unsafe"
 
 instance Pretty HsMatch where
 	pretty (HsMatch pos f ps rhs whereDecls) =

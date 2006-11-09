@@ -72,7 +72,6 @@ data Token
 
 -- Reserved Ids
 
-	| KW_As
 	| KW_Case
 	| KW_Class
 	| KW_Data
@@ -80,7 +79,7 @@ data Token
 	| KW_Deriving
 	| KW_Do
 	| KW_Else
-        | KW_Hiding
+	| KW_Foreign
 	| KW_If
 	| KW_Import
 	| KW_In
@@ -95,7 +94,15 @@ data Token
 	| KW_Then
 	| KW_Type
 	| KW_Where
+
+-- Special Ids
+
+	| KW_As
+	| KW_Export
+	| KW_Hiding
 	| KW_Qualified
+	| KW_Safe
+	| KW_Unsafe
 
         | EOF
         deriving (Eq,Show)
@@ -131,6 +138,7 @@ reserved_ids = [
  ( "deriving",  KW_Deriving ),
  ( "do",        KW_Do ),
  ( "else",      KW_Else ),
+ ( "foreign",	KW_Foreign ),
  ( "if",    	KW_If ),
  ( "import",    KW_Import ),
  ( "in", 	KW_In ),
@@ -150,8 +158,11 @@ reserved_ids = [
 special_varids :: [(String,Token)]
 special_varids = [
  ( "as", 	KW_As ),
+ ( "export", 	KW_Export ),
+ ( "hiding", 	KW_Hiding ),
  ( "qualified", KW_Qualified ),
- ( "hiding", 	KW_Hiding )
+ ( "safe",	KW_Safe ),
+ ( "unsafe", 	KW_Unsafe )
  ]
 
 isIdent, isSymbol :: Char -> Bool

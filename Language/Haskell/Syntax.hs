@@ -28,6 +28,7 @@ module Language.Haskell.Syntax (
     -- * Declarations
     HsDecl(..), HsConDecl(..), HsBangType(..),
     HsMatch(..), HsRhs(..), HsGuardedRhs(..),
+    HsSafety(..),
     -- * Class Assertions and Contexts
     HsQualType(..), HsContext, HsAsst,
     -- * Types
@@ -52,8 +53,6 @@ module Language.Haskell.Syntax (
     -- ** Constructors
     unit_con_name, tuple_con_name, list_cons_name,
     unit_con, tuple_con,
-    -- ** Special identifiers
-    as_name, qualified_name, hiding_name, minus_name, pling_name,
     -- ** Type constructors
     unit_tycon_name, fun_tycon_name, list_tycon_name, tuple_tycon_name,
     unit_tycon, fun_tycon, list_tycon, tuple_tycon,
@@ -65,7 +64,7 @@ module Language.Haskell.Syntax (
 
 #ifdef __GLASGOW_HASKELL__
 import Data.Generics.Basics
-import Data.Generics.Instances
+import Data.Generics.Instances()
 #endif
 
 -- | A position in the source.
@@ -244,6 +243,8 @@ data HsDecl
 	 | HsTypeSig	 SrcLoc [HsName] HsQualType
 	 | HsFunBind     [HsMatch]
 	 | HsPatBind	 SrcLoc HsPat HsRhs {-where-} [HsDecl]
+	 | HsForeignImport SrcLoc String HsSafety String HsName HsType
+	 | HsForeignExport SrcLoc String String HsName HsType
 #ifdef __GLASGOW_HASKELL__
   deriving (Eq,Show,Typeable,Data)
 #else
@@ -301,6 +302,16 @@ data HsGuardedRhs
   deriving (Eq,Show,Typeable,Data)
 #else
   deriving (Eq,Show)
+#endif
+
+-- ^ Safety level for invoking a foreign entity
+data HsSafety
+	= HsSafe	-- ^ call may generate callbacks
+	| HsUnsafe	-- ^ call will not generate callbacks
+#ifdef __GLASGOW_HASKELL__
+  deriving (Eq,Ord,Show,Typeable,Data)
+#else
+  deriving (Eq,Ord,Show)
 #endif
 
 -- | A type qualified with a context.
@@ -520,13 +531,6 @@ unit_con	      = HsCon unit_con_name
 
 tuple_con :: Int -> HsExp
 tuple_con i	      = HsCon (tuple_con_name i)
-
-as_name, qualified_name, hiding_name, minus_name, pling_name :: HsName
-as_name	              = HsIdent "as"
-qualified_name        = HsIdent "qualified"
-hiding_name	      = HsIdent "hiding"
-minus_name	      = HsSymbol "-"
-pling_name	      = HsSymbol "!"
 
 unit_tycon_name, fun_tycon_name, list_tycon_name :: HsQName
 unit_tycon_name       = unit_con_name
