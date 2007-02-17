@@ -588,7 +588,7 @@ instance Pretty HsPatField where
 ------------------------- Case bodies  -------------------------
 instance Pretty HsAlt where
 	pretty (HsAlt _pos e gAlts decls) =
-		pretty e <+> pretty gAlts $$$ ppWhere decls
+		myFsep [pretty e, pretty gAlts] $$$ ppWhere decls
 
 instance Pretty HsGuardedAlts where
 	pretty (HsUnGuardedAlt e) = text "->" <+> pretty e
