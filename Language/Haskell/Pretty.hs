@@ -387,7 +387,7 @@ instance Pretty HsDecl where
 			[pretty name, text "::", pretty ty]
 
 	pretty (HsFunBind matches) =
-		foldr ($$$) empty (map pretty matches)
+		ppBody (const 0) (map pretty matches)
 
 	pretty (HsPatBind pos pat rhs whereDecls) =
 		markLine pos $
