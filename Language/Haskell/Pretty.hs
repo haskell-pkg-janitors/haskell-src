@@ -387,7 +387,7 @@ instance Pretty HsDecl where
 			[pretty name, text "::", pretty ty]
 
 	pretty (HsFunBind matches) =
-		ppBody (const 0) (map pretty matches)
+		ppBindings (map pretty matches)
 
 	pretty (HsPatBind pos pat rhs whereDecls) =
 		markLine pos $
@@ -715,14 +715,20 @@ topLevel header dl = do
 
 ppBody :: (PPHsMode -> Int) -> [Doc] -> Doc
 ppBody f dl = do
-	 e <- fmap layout getPPEnv
-	 case e of PPOffsideRule -> indent
-		   PPSemiColon   -> indentExplicit
-		   _ -> flatBlock dl
-		   where
-		   indent  = do{i <-fmap f getPPEnv;nest i . vcat $ dl}
-		   indentExplicit = do {i <- fmap f getPPEnv;
-			   nest i . prettyBlock $ dl}
+	e <- fmap layout getPPEnv
+	i <- fmap f getPPEnv
+	case e of
+	    PPOffsideRule -> nest i . vcat $ dl
+	    PPSemiColon   -> nest i . prettyBlock $ dl
+	    _             -> flatBlock dl
+
+ppBindings :: [Doc] -> Doc
+ppBindings dl = do
+	e <- fmap layout getPPEnv
+	case e of
+	    PPOffsideRule -> vcat dl
+	    PPSemiColon   -> vcat . punctuate semi $ dl
+	    _             -> hsep . punctuate semi $ dl
 
 ($$$) :: Doc -> Doc -> Doc
 a $$$ b = layoutChoice (a $$) (a <+>) b
