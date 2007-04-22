@@ -11,7 +11,7 @@ endif
 
 ALL_DIRS     = Language/Haskell
 PACKAGE      = haskell-src
-VERSION = 1.0
+VERSION = 1.0.1
 PACKAGE_DEPS = base
 
 Language/Haskell/Parser_HC_OPTS += -Onot -fno-warn-incomplete-patterns
