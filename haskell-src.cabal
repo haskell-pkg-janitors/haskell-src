@@ -16,7 +16,7 @@ exposed-modules:
 	Language.Haskell.Pretty,
 	Language.Haskell.Syntax
 	Language.Haskell.ParseUtils
-build-depends:	base, haskell98
+build-depends:	base, haskell98, pretty
 		-- The dependency on Haskell 98 is only because
 		-- Happy generates a parser that imports Array
 extensions:	CPP

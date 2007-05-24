@@ -1,5 +1,5 @@
 THISPKG	= haskell-src
-SEARCH	=
+SEARCH	= -package pretty
 EXTRA_H_FLAGS = -K11M
 # NOTE: 200M is ridiculous, but otherwise there is a segfault with CFG=p
 # for Language/Haskell/Parser.hs. More investigation is needed here...
