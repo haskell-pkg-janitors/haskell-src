@@ -20,3 +20,4 @@ build-depends:	base, haskell98, pretty
 		-- The dependency on Haskell 98 is only because
 		-- Happy generates a parser that imports Array
 extensions:	CPP
+nhc98-options:	-K11M
