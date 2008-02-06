@@ -304,7 +304,7 @@ data HsGuardedRhs
   deriving (Eq,Show)
 #endif
 
--- ^ Safety level for invoking a foreign entity
+-- | Safety level for invoking a foreign entity
 data HsSafety
 	= HsSafe	-- ^ call may generate callbacks
 	| HsUnsafe	-- ^ call will not generate callbacks
