@@ -24,6 +24,7 @@ import Language.Haskell.ParseMonad
 import Data.Char	(isAlpha, isLower, isUpper, toLower,
 			 isDigit, isHexDigit, isOctDigit, isSpace,
 			 ord, chr, digitToInt)
+import qualified Data.Char (isSymbol)
 import Data.Ratio
 
 data Token
@@ -167,7 +168,7 @@ special_varids = [
 
 isIdent, isSymbol :: Char -> Bool
 isIdent  c = isAlpha c || isDigit c || c == '\'' || c == '_'
-isSymbol c = elem c ":!#$%&*+./<=>?@\\^|-~"
+isSymbol c = c `elem` ":!#%&*./?@\\-" || (Data.Char.isSymbol c && not (c `elem` "(),;[]`{}_\"'"))
 
 matchChar :: Char -> String -> Lex a ()
 matchChar c msg = do
