@@ -23,7 +23,7 @@ library
         Language.Haskell.Syntax,
         Language.Haskell.ParseUtils
   if flag(split-base)
-    build-depends:	base >= 3, pretty, array
+    build-depends:	base >= 3 && < 4, pretty, array
   else
     build-depends:	base < 3
   build-depends: haskell98
