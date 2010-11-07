@@ -5,10 +5,13 @@ license-file:   LICENSE
 author:         Simon Marlow, Sven Panne and Noel Winstanley
 maintainer:     libraries@haskell.org
 category:       Language
-synopsis:       Manipulating Haskell source code
+synopsis:       Support for manipulating Haskell source code
 description:
-        Facilities for manipulating Haskell source code:
-        an abstract syntax, lexer, parser and pretty-printer.
+    The 'haskell-src' package provides support for manipulating Haskell
+    source code. The package provides a lexer, parser and
+    pretty-printer, and a definition of a Haskell abstract syntax tree
+    (AST). Common uses of this package are to parse or generate Haskell
+    98 code.
 build-type:     Simple
 cabal-version:  >=1.2
 
