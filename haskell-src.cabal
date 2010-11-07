@@ -13,9 +13,13 @@ description:
     (AST). Common uses of this package are to parse or generate Haskell
     98 code.
 build-type:     Simple
-cabal-version:  >=1.2
+cabal-version:  >=1.6
 
 flag split-base
+
+source-repository head
+    type:     darcs
+    location: http://code.haskell.org/haskell-src
 
 library
   exposed-modules:
