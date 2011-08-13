@@ -33,8 +33,5 @@ library
     build-depends:      base >= 4 && < 5, syb, pretty, array
   else
     build-depends:      base < 3
-  build-depends: haskell98
-  -- The dependency on Haskell 98 is only because
-  -- Happy generates a parser that imports Array
   extensions:   CPP
   nhc98-options:        -K11M
