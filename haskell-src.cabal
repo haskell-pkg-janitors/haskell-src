@@ -3,7 +3,8 @@ version:        1.0.1.4
 license:        BSD3
 license-file:   LICENSE
 author:         Simon Marlow, Sven Panne and Noel Winstanley
-maintainer:     libraries@haskell.org
+-- Maintained through https://github.com/haskell-pkg-janitors. Join us!
+maintainer:         Conrad Parker <conrad@metadecks.org>
 category:       Language
 synopsis:       Support for manipulating Haskell source code
 description:
@@ -18,8 +19,8 @@ cabal-version:  >=1.6
 flag split-base
 
 source-repository head
-    type:     darcs
-    location: http://code.haskell.org/haskell-src
+    type:     git
+    location: git://github.com/haskell-pkg-janitors/haskell-src.git
 
 library
   exposed-modules:
