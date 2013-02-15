@@ -5,7 +5,7 @@
 -- Module      :  Language.Haskell.Syntax
 -- Copyright   :  (c) The GHC Team, 1997-2000
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
 -- Portability :  portable
@@ -16,7 +16,7 @@
 --   * multi-parameter type classes
 --
 --   * parameters of type class assertions are unrestricted
--- 
+--
 -- This module has been changed so that show is a real show.
 -- For GHC, we also derive Typeable and Data for all types.
 

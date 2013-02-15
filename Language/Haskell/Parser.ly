@@ -16,7 +16,7 @@
 > module Language.Haskell.Parser (
 >               parseModule, parseModuleWithMode,
 >               ParseMode(..), defaultParseMode, ParseResult(..)) where
-> 
+>
 > import Language.Haskell.Syntax
 > import Language.Haskell.ParseMonad
 > import Language.Haskell.Lexer
@@ -443,7 +443,7 @@ Datatype declarations
 >       : vars '::' stype               { (reverse $1, $3) }
 
 > stype :: { HsBangType }
->       : type                          { HsUnBangedTy $1 }     
+>       : type                          { HsUnBangedTy $1 }
 >       | '!' atype                     { HsBangedTy   $2 }
 
 > deriving :: { [HsQName] }
@@ -726,7 +726,7 @@ Variables, Constructors and Operators.
 >       | '`' qvarid '`'        { $2 }
 
 > conop :: { HsName }
->       : consym                { $1 }  
+>       : consym                { $1 }
 >       | '`' conid '`'         { $2 }
 
 > qconop :: { HsQName }
@@ -806,7 +806,7 @@ Identifiers and Symbols
 >       | STRING                { HsString $1 }
 
 > srcloc :: { SrcLoc }  :       {% getSrcLoc }
- 
+
 -----------------------------------------------------------------------------
 Layout
 
