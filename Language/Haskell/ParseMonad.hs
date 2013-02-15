@@ -4,7 +4,7 @@
 -- Module      :  Language.Haskell.ParseMonad
 -- Copyright   :  (c) The GHC Team, 1997-2000
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
 -- Portability :  portable
@@ -39,7 +39,7 @@ data ParseResult a
 
 instance Functor ParseResult where
   fmap f (ParseOk x)           = ParseOk $ f x
-  fmap f (ParseFailed loc msg) = ParseFailed loc msg
+  fmap _ (ParseFailed loc msg) = ParseFailed loc msg
 
 instance Applicative ParseResult where
   pure = ParseOk
@@ -137,7 +137,7 @@ pushCurrentContext = do
 	pushContext (Layout (max (indent+1) (srcColumn loc)))
 
 currentIndent :: P Int
-currentIndent = P $ \_r _x _y loc stk _mode -> Ok stk (indentOfParseState stk)
+currentIndent = P $ \_r _x _y _loc stk _mode -> Ok stk (indentOfParseState stk)
 
 pushContext :: LexContext -> P ()
 pushContext ctxt =

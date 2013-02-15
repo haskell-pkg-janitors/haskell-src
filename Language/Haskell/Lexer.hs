@@ -4,7 +4,7 @@
 -- Module      :  Language.Haskell.Lexer
 -- Copyright   :  (c) The GHC Team, 1997-2000
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
 -- Portability :  portable
@@ -181,10 +181,10 @@ matchChar c msg = do
 
 lexer :: (Token -> P a) -> P a
 lexer = runL $ do
-	bol <- checkBOL
-	bol <- lexWhiteSpace bol
+	bol  <- checkBOL
+	bol' <- lexWhiteSpace bol
 	startToken
-	if bol then lexBOL else lexToken
+	if bol' then lexBOL else lexToken
 
 lexWhiteSpace :: Bool -> Lex a Bool
 lexWhiteSpace bol = do
@@ -192,11 +192,11 @@ lexWhiteSpace bol = do
 	case s of
 	    '{':'-':_ -> do
 		discard 2
-		bol <- lexNestedComment bol
-		lexWhiteSpace bol
+		bol' <- lexNestedComment bol
+		lexWhiteSpace bol'
 	    '-':'-':rest | all (== '-') (takeWhile isSymbol rest) -> do
-		lexWhile (== '-')
-		lexWhile (/= '\n')
+		_ <- lexWhile (== '-')
+		_ <- lexWhile (/= '\n')
 		s' <- getInput
 		case s' of
 		    [] -> fail "Unterminated end-of-line comment"
@@ -221,8 +221,8 @@ lexNestedComment bol = do
 	    '-':'}':_ -> discard 2 >> return bol
 	    '{':'-':_ -> do
 		discard 2
-		bol <- lexNestedComment bol	-- rest of the subcomment
-		lexNestedComment bol		-- rest of this comment
+		bol' <- lexNestedComment bol	-- rest of the subcomment
+		lexNestedComment bol'		-- rest of this comment
 	    '\t':_    -> lexTab >> lexNestedComment bol
 	    '\n':_    -> lexNewline >> lexNestedComment True
 	    _:_       -> discard 1 >> lexNestedComment bol
@@ -321,16 +321,16 @@ lexDecimalOrFloat = do
 		frac <- lexWhile isDigit
 		let num = parseInteger 10 (ds ++ frac)
 		    decimals = toInteger (length frac)
-		exponent <- do
+		exponent' <- do
 			rest2 <- getInput
 			case rest2 of
 			    'e':_ -> lexExponent
 			    'E':_ -> lexExponent
 			    _     -> return 0
-		return (FloatTok ((num%1) * 10^^(exponent - decimals)))
+		return (FloatTok ((num%1) * 10^^(exponent' - decimals)))
 	    e:_ | toLower e == 'e' -> do
-		exponent <- lexExponent
-		return (FloatTok ((parseInteger 10 ds%1) * 10^^exponent))
+		exponent' <- lexExponent
+		return (FloatTok ((parseInteger 10 ds%1) * 10^^exponent'))
 	    _ -> return (IntTok (parseInteger 10 ds))
 
     where

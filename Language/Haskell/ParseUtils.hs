@@ -4,7 +4,7 @@
 -- Module      :  Language.Haskell.ParseUtils
 -- Copyright   :  (c) The GHC Team, 1997-2000
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
 -- Portability :  portable
@@ -98,36 +98,36 @@ checkPattern e = checkPat e []
 checkPat :: HsExp -> [HsPat] -> P HsPat
 checkPat (HsCon c) args = return (HsPApp c args)
 checkPat (HsApp f x) args = do
-	x <- checkPat x []
-	checkPat f (x:args)
+	x' <- checkPat x []
+	checkPat f (x':args)
 checkPat e [] = case e of
 	HsVar (UnQual x)   -> return (HsPVar x)
 	HsLit l            -> return (HsPLit l)
 	HsInfixApp l op r  -> do
-			      l <- checkPat l []
-			      r <- checkPat r []
+			      l' <- checkPat l []
+			      r' <- checkPat r []
 			      case op of
-				 HsQConOp c -> return (HsPInfixApp l c r)
+				 HsQConOp c -> return (HsPInfixApp l' c r')
 				 _ -> patFail
 	HsTuple es         -> do
-			      ps <- mapM (\e -> checkPat e []) es
+			      ps <- mapM (\e' -> checkPat e' []) es
 			      return (HsPTuple ps)
 	HsList es	   -> do
-			      ps <- mapM (\e -> checkPat e []) es
+			      ps <- mapM (\e' -> checkPat e' []) es
 			      return (HsPList ps)
-	HsParen e	   -> do
-			      p <- checkPat e []
+	HsParen e'	   -> do
+			      p <- checkPat e' []
 			      return (HsPParen p)
-	HsAsPat n e	   -> do
-			      p <- checkPat e []
+	HsAsPat n e'	   -> do
+			      p <- checkPat e' []
 			      return (HsPAsPat n p)
 	HsWildCard	   -> return HsPWildCard
-	HsIrrPat e	   -> do
-			      p <- checkPat e []
+	HsIrrPat e'	   -> do
+			      p <- checkPat e' []
 			      return (HsPIrrPat p)
 	HsRecConstr c fs   -> do
-			      fs <- mapM checkPatField fs
-			      return (HsPRec c fs)
+			      fs' <- mapM checkPatField fs
+			      return (HsPRec c fs')
 	HsNegApp (HsLit l) -> return (HsPNeg (HsPLit l))
 	_ -> patFail
 
@@ -151,76 +151,76 @@ checkExpr e = case e of
 	HsLit _			  -> return e
 	HsInfixApp e1 op e2	  -> check2Exprs e1 e2 (flip HsInfixApp op)
 	HsApp e1 e2		  -> check2Exprs e1 e2 HsApp
-	HsNegApp e		  -> check1Expr e HsNegApp
-	HsLambda loc ps e	  -> check1Expr e (HsLambda loc ps)
-	HsLet bs e		  -> check1Expr e (HsLet bs)
+	HsNegApp e1		  -> check1Expr e1 HsNegApp
+	HsLambda loc ps e1	  -> check1Expr e1 (HsLambda loc ps)
+	HsLet bs e1		  -> check1Expr e1 (HsLet bs)
 	HsIf e1 e2 e3		  -> check3Exprs e1 e2 e3 HsIf
-	HsCase e alts		  -> do
-				     alts <- mapM checkAlt alts
-				     e <- checkExpr e
-				     return (HsCase e alts)
+	HsCase e1 alts		  -> do
+				     alts' <- mapM checkAlt alts
+				     e1' <- checkExpr e1
+				     return (HsCase e1' alts')
 	HsDo stmts		  -> do
-				     stmts <- mapM checkStmt stmts
-				     return (HsDo stmts)
+				     stmts' <- mapM checkStmt stmts
+				     return (HsDo stmts')
 	HsTuple es		  -> checkManyExprs es HsTuple
 	HsList es		  -> checkManyExprs es HsList
-	HsParen e		  -> check1Expr e HsParen
-	HsLeftSection e op	  -> check1Expr e (flip HsLeftSection op)
-	HsRightSection op e	  -> check1Expr e (HsRightSection op)
+	HsParen e1		  -> check1Expr e1 HsParen
+	HsLeftSection e1 op	  -> check1Expr e1 (flip HsLeftSection op)
+	HsRightSection op e1	  -> check1Expr e1 (HsRightSection op)
 	HsRecConstr c fields	  -> do
-				     fields <- mapM checkField fields
-				     return (HsRecConstr c fields)
-	HsRecUpdate e fields	  -> do
-				     fields <- mapM checkField fields
-				     e <- checkExpr e
-				     return (HsRecUpdate e fields)
-	HsEnumFrom e		  -> check1Expr e HsEnumFrom
+				     fields' <- mapM checkField fields
+				     return (HsRecConstr c fields')
+	HsRecUpdate e1 fields	  -> do
+				     fields' <- mapM checkField fields
+				     e1' <- checkExpr e1
+				     return (HsRecUpdate e1' fields')
+	HsEnumFrom e1		  -> check1Expr e1 HsEnumFrom
 	HsEnumFromTo e1 e2	  -> check2Exprs e1 e2 HsEnumFromTo
 	HsEnumFromThen e1 e2      -> check2Exprs e1 e2 HsEnumFromThen
 	HsEnumFromThenTo e1 e2 e3 -> check3Exprs e1 e2 e3 HsEnumFromThenTo
-	HsListComp e stmts        -> do
-				     stmts <- mapM checkStmt stmts
-				     e <- checkExpr e
-				     return (HsListComp e stmts)
-	HsExpTypeSig loc e ty     -> do
-				     e <- checkExpr e
-				     return (HsExpTypeSig loc e ty)
+	HsListComp e1 stmts       -> do
+				     stmts' <- mapM checkStmt stmts
+				     e1' <- checkExpr e1
+				     return (HsListComp e1' stmts')
+	HsExpTypeSig loc e1 ty    -> do
+				     e1' <- checkExpr e1
+				     return (HsExpTypeSig loc e1' ty)
 	_                         -> fail "Parse error in expression"
 
 -- type signature for polymorphic recursion!!
 check1Expr :: HsExp -> (HsExp -> a) -> P a
 check1Expr e1 f = do
-	e1 <- checkExpr e1
-	return (f e1)
+	e1' <- checkExpr e1
+	return (f e1')
 
 check2Exprs :: HsExp -> HsExp -> (HsExp -> HsExp -> a) -> P a
 check2Exprs e1 e2 f = do
-	e1 <- checkExpr e1
-	e2 <- checkExpr e2
-	return (f e1 e2)
+	e1' <- checkExpr e1
+	e2' <- checkExpr e2
+	return (f e1' e2')
 
 check3Exprs :: HsExp -> HsExp -> HsExp -> (HsExp -> HsExp -> HsExp -> a) -> P a
 check3Exprs e1 e2 e3 f = do
-	e1 <- checkExpr e1
-	e2 <- checkExpr e2
-	e3 <- checkExpr e3
-	return (f e1 e2 e3)
+	e1' <- checkExpr e1
+	e2' <- checkExpr e2
+	e3' <- checkExpr e3
+	return (f e1' e2' e3')
 
 checkManyExprs :: [HsExp] -> ([HsExp] -> a) -> P a
 checkManyExprs es f = do
-	es <- mapM checkExpr es
-	return (f es)
+	es' <- mapM checkExpr es
+	return (f es')
 
 checkAlt :: HsAlt -> P HsAlt
 checkAlt (HsAlt loc p galts bs) = do
-	galts <- checkGAlts galts
-	return (HsAlt loc p galts bs)
+	galts' <- checkGAlts galts
+	return (HsAlt loc p galts' bs)
 
 checkGAlts :: HsGuardedAlts -> P HsGuardedAlts
 checkGAlts (HsUnGuardedAlt e) = check1Expr e HsUnGuardedAlt
 checkGAlts (HsGuardedAlts galts) = do
-	galts <- mapM checkGAlt galts
-	return (HsGuardedAlts galts)
+	galts' <- mapM checkGAlt galts
+	return (HsGuardedAlts galts')
 
 checkGAlt :: HsGuardedAlt -> P HsGuardedAlt
 checkGAlt (HsGuardedAlt loc e1 e2) = check2Exprs e1 e2 (HsGuardedAlt loc)
@@ -243,8 +243,8 @@ checkValDef srcloc lhs rhs whereBinds =
 			ps <- mapM checkPattern es
 			return (HsFunBind [HsMatch srcloc f ps rhs whereBinds])
          Nothing     -> do
-			lhs <- checkPattern lhs
-			return (HsPatBind srcloc lhs rhs whereBinds)
+			lhs' <- checkPattern lhs
+			return (HsPatBind srcloc lhs' rhs whereBinds)
 
 -- A variable binding is parsed as an HsPatBind.
 
