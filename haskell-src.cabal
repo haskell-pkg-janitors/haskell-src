@@ -36,3 +36,4 @@ library
     build-depends:      base < 3
   extensions:   CPP
   nhc98-options:        -K11M
+  ghc-options:          -Wall -O2
