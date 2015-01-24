@@ -27,7 +27,9 @@ module Language.Haskell.ParseMonad(
 
 import Language.Haskell.Syntax(SrcLoc(..))
 import Control.Applicative
+import Control.Monad (ap, liftM)
 import Data.Monoid
+import Prelude
 
 -- | The result of a parse.
 data ParseResult a
@@ -111,6 +113,13 @@ runParserWithMode mode (P m) s = case m s 0 1 start [] mode of
 runParser :: P a -> String -> ParseResult a
 runParser = runParserWithMode defaultParseMode
 
+instance Functor P where
+        fmap = liftM
+
+instance Applicative P where
+        pure  = return
+        (<*>) = ap
+
 instance Monad P where
         return a = P $ \_i _x _y _l s _m -> Ok s a
         P m >>= k = P $ \i x y l s mode ->
@@ -155,6 +164,13 @@ popContext = P $ \_i _x _y _l stk _m ->
 -- a continuation-passing version of the parsing monad
 
 newtype Lex r a = Lex { runL :: (a -> P r) -> P r }
+
+instance Functor (Lex r) where
+        fmap = liftM
+
+instance Applicative (Lex r) where
+        pure  = return
+        (<*>) = ap
 
 instance Monad (Lex r) where
         return a = Lex $ \k -> k a

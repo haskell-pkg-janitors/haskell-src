@@ -24,6 +24,9 @@ module Language.Haskell.Pretty (
 
 import Language.Haskell.Syntax
 
+import Control.Applicative (Applicative(..))
+import Control.Monad (ap)
+
 import qualified Text.PrettyPrint as P
 
 infixl 5 $$$
@@ -90,6 +93,10 @@ newtype DocM s a = DocM (s -> a)
 
 instance Functor (DocM s) where
          fmap f xs = do x <- xs; return (f x)
+
+instance Applicative (DocM s) where
+        pure = return
+        (<*>) = ap
 
 instance Monad (DocM s) where
         (>>=) = thenDocM

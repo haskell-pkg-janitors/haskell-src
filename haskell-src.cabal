@@ -1,10 +1,12 @@
 name:           haskell-src
-version:        1.0.1.6
+-- don't forget to update the changelog.md!
+version:        1.0.2.0
 license:        BSD3
 license-file:   LICENSE
 author:         Simon Marlow, Sven Panne and Noel Winstanley
 -- Maintained through https://github.com/haskell-pkg-janitors. Join us!
-maintainer:         Conrad Parker <conrad@metadecks.org>
+maintainer:     Herbert Valerio Riedel <hvr@gnu.org>
+bug-reports:    https://github.com/haskell-pkg-janitors/haskell-src/issues
 category:       Language
 synopsis:       Support for manipulating Haskell source code
 description:
@@ -16,11 +18,13 @@ description:
 build-type:     Simple
 cabal-version:  >=1.6
 
+extra-source-files: changelog.md
+
 flag split-base
 
 source-repository head
     type:     git
-    location: git://github.com/haskell-pkg-janitors/haskell-src.git
+    location: https://github.com/haskell-pkg-janitors/haskell-src.git
 
 library
   exposed-modules:
@@ -30,10 +34,14 @@ library
         Language.Haskell.Pretty,
         Language.Haskell.Syntax,
         Language.Haskell.ParseUtils
+
   if flag(split-base)
     build-depends:      base >= 4 && < 5, syb, pretty, array
   else
     build-depends:      base < 3
+
+  build-tools: happy
+
   extensions:   CPP
   nhc98-options:        -K11M
   ghc-options:          -Wall -O2
