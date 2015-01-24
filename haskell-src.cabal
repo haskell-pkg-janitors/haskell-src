@@ -1,5 +1,5 @@
 name:           haskell-src
-version:        1.0.1.5
+version:        1.0.1.6
 license:        BSD3
 license-file:   LICENSE
 author:         Simon Marlow, Sven Panne and Noel Winstanley
