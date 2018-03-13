@@ -1,4 +1,3 @@
--- #hide
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Language.Haskell.ParseMonad
@@ -25,11 +24,11 @@ module Language.Haskell.ParseMonad(
                 pushContextL, popContextL
         ) where
 
-import Language.Haskell.Syntax(SrcLoc(..))
-import Control.Applicative
-import Control.Monad (ap, liftM)
-import Data.Monoid
-import Prelude
+import           Control.Applicative     as App
+import           Control.Monad           (ap, liftM)
+import qualified Control.Monad.Fail      as Fail
+import           Data.Semigroup          as Semi
+import           Language.Haskell.Syntax (SrcLoc (..))
 
 -- | The result of a parse.
 data ParseResult a
@@ -43,21 +42,28 @@ instance Functor ParseResult where
   fmap f (ParseOk x)           = ParseOk $ f x
   fmap _ (ParseFailed loc msg) = ParseFailed loc msg
 
-instance Applicative ParseResult where
+instance App.Applicative ParseResult where
   pure = ParseOk
   ParseOk f           <*> x = f <$> x
   ParseFailed loc msg <*> _ = ParseFailed loc msg
 
 instance Monad ParseResult where
-  return = ParseOk
+  return = pure
   ParseOk x           >>= f = f x
   ParseFailed loc msg >>= _ = ParseFailed loc msg
 
+-- TODO: relax constraint to 'Semigroup s => Semigroup (ParseResult
+-- s)' in the long distant future
+
+-- | @since 1.0.2.0
+instance Monoid m => Semi.Semigroup (ParseResult m) where
+  ParseOk x <> ParseOk y = ParseOk $ x `mappend` y
+  ParseOk _ <> err       = err
+  err       <> _         = err -- left-biased
+
 instance Monoid m => Monoid (ParseResult m) where
   mempty = ParseOk mempty
-  ParseOk x `mappend` ParseOk y = ParseOk $ x `mappend` y
-  ParseOk _ `mappend` err       = err
-  err       `mappend` _         = err -- left-biased
+  mappend = (<>)
 
 -- internal version
 data ParseStatus a = Ok ParseState a | Failed SrcLoc String
@@ -102,7 +108,7 @@ newtype P a = P { runP ::
 
 runParserWithMode :: ParseMode -> P a -> String -> ParseResult a
 runParserWithMode mode (P m) s = case m s 0 1 start [] mode of
-        Ok _ a -> ParseOk a
+        Ok _ a         -> ParseOk a
         Failed loc msg -> ParseFailed loc msg
     where start = SrcLoc {
                 srcFilename = parseFilename mode,
@@ -117,15 +123,19 @@ instance Functor P where
         fmap = liftM
 
 instance Applicative P where
-        pure  = return
+        pure a = P $ \_i _x _y _l s _m -> Ok s a
         (<*>) = ap
 
 instance Monad P where
-        return a = P $ \_i _x _y _l s _m -> Ok s a
+        return = pure
         P m >>= k = P $ \i x y l s mode ->
                 case m i x y l s mode of
                     Failed loc msg -> Failed loc msg
-                    Ok s' a -> runP (k a) i x y l s' mode
+                    Ok s' a        -> runP (k a) i x y l s' mode
+        fail = Fail.fail
+
+-- | @since 1.0.2.0
+instance Fail.MonadFail P where
         fail s = P $ \_r _col _line loc _stk _m -> Failed loc s
 
 atSrcLoc :: P a -> SrcLoc -> P a
@@ -169,14 +179,19 @@ instance Functor (Lex r) where
         fmap = liftM
 
 instance Applicative (Lex r) where
-        pure  = return
+        pure a = Lex $ \k -> k a
         (<*>) = ap
+        Lex v *> Lex w = Lex $ \k -> v (\_ -> w k)
 
 instance Monad (Lex r) where
-        return a = Lex $ \k -> k a
+        return = pure
         Lex v >>= f = Lex $ \k -> v (\a -> runL (f a) k)
-        Lex v >> Lex w = Lex $ \k -> v (\_ -> w k)
-        fail s = Lex $ \_ -> fail s
+        (>>) = (*>)
+        fail = Fail.fail
+
+-- | @since 1.0.2.0
+instance Fail.MonadFail (Lex r) where
+        fail s = Lex $ \_ -> Fail.fail s
 
 -- Operations on this monad
 

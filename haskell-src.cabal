@@ -1,6 +1,9 @@
+cabal-version:  >=1.10
 name:           haskell-src
 -- don't forget to update the changelog.md!
-version:        1.0.2.0
+version:        1.0.3.0
+build-type:     Simple
+
 license:        BSD3
 license-file:   LICENSE
 author:         Simon Marlow, Sven Panne and Noel Winstanley
@@ -10,17 +13,13 @@ bug-reports:    https://github.com/haskell-pkg-janitors/haskell-src/issues
 category:       Language
 synopsis:       Support for manipulating Haskell source code
 description:
-    The 'haskell-src' package provides support for manipulating Haskell
+    The @haskell-src@ package provides support for manipulating Haskell
     source code. The package provides a lexer, parser and
     pretty-printer, and a definition of a Haskell abstract syntax tree
-    (AST). Common uses of this package are to parse or generate Haskell
-    98 code.
-build-type:     Simple
-cabal-version:  >=1.6
+    (AST). Common uses of this package are to parse or generate
+    <http://www.haskell.org/onlinereport/ Haskell 98> code
 
 extra-source-files: changelog.md
-
-flag split-base
 
 source-repository head
     type:     git
@@ -35,13 +34,18 @@ library
         Language.Haskell.Syntax,
         Language.Haskell.ParseUtils
 
-  if flag(split-base)
-    build-depends:      base >= 4 && < 5, syb, pretty, array
+  build-depends: base    >= 4.3 && < 5
+               , syb     >= 0.1 && < 0.8
+               , pretty  == 1.1.*
+               , array   >= 0.3 && < 0.6
+
+  if !impl(ghc >= 8.0)
+    build-depends: semigroups == 0.18.*, fail == 4.9.*
   else
-    build-depends:      base < 3
+    ghc-options: -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances
 
-  build-tools: happy
+  build-tools: happy == 1.19.*
 
-  extensions:   CPP
-  nhc98-options:        -K11M
-  ghc-options:          -Wall -O2
+  default-language: Haskell98
+
+  ghc-options: -Wall

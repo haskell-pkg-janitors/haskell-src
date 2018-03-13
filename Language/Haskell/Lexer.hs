@@ -1,4 +1,3 @@
--- #hide
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Language.Haskell.Lexer
@@ -19,13 +18,13 @@
 
 module Language.Haskell.Lexer (Token(..), lexer) where
 
-import Language.Haskell.ParseMonad
+import           Language.Haskell.ParseMonad
 
-import Data.Char        (isAlpha, isLower, isUpper, toLower,
-                         isDigit, isHexDigit, isOctDigit, isSpace,
-                         ord, chr, digitToInt)
-import qualified Data.Char (isSymbol)
-import Data.Ratio
+import           Data.Char                   (chr, digitToInt, isAlpha, isDigit,
+                                              isHexDigit, isLower, isOctDigit,
+                                              isSpace, isUpper, ord, toLower)
+import qualified Data.Char                   (isSymbol)
+import           Data.Ratio
 
 data Token
         = VarId String
@@ -273,7 +272,7 @@ lexToken = do
                 ident <- lexWhile isIdent
                 return $ case lookup ident (reserved_ids ++ special_varids) of
                         Just keyword -> keyword
-                        Nothing -> VarId ident
+                        Nothing      -> VarId ident
 
             | isSymbol c -> do
                 sym <- lexWhile isSymbol
@@ -388,9 +387,9 @@ lexChar :: Lex a Char
 lexChar = do
         r <- getInput
         case r of
-                '\\':_  -> lexEscape
-                c:_     -> discard 1 >> return c
-                []      -> fail "Incomplete character constant"
+                '\\':_ -> lexEscape
+                c:_    -> discard 1 >> return c
+                []     -> fail "Incomplete character constant"
 
 lexString :: Lex a Token
 lexString = loop ""
@@ -507,13 +506,13 @@ lexEscape = do
 
     where
         checkChar n | n <= 0x10FFFF = return (chr (fromInteger n))
-        checkChar _                 = fail "Character constant out of range"
+        checkChar _ = fail "Character constant out of range"
 
 -- Production cntrl from section B.2
 
         cntrl :: Char -> Lex a Char
         cntrl c | c >= '@' && c <= '_' = return (chr (ord c - ord '@'))
-        cntrl _                        = fail "Illegal control character"
+        cntrl _ = fail "Illegal control character"
 
 -- assumes at least one octal digit
 lexOctal :: Lex a Integer

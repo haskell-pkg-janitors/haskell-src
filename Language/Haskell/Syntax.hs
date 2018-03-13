@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Language.Haskell.Syntax
@@ -10,8 +11,8 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- A suite of datatypes describing the abstract syntax of Haskell 98
--- <http://www.haskell.org/onlinereport/> plus a few extensions:
+-- A suite of datatypes describing the abstract syntax of
+-- <http://www.haskell.org/onlinereport/ Haskell 98> plus a few extensions:
 --
 --   * multi-parameter type classes
 --
@@ -64,15 +65,15 @@ module Language.Haskell.Syntax (
 
 
 #ifdef __GLASGOW_HASKELL__
-import Data.Generics.Basics
-import Data.Generics.Instances()
+import           Data.Generics.Basics
+import           Data.Generics.Instances ()
 #endif
 
 -- | A position in the source.
 data SrcLoc = SrcLoc {
                 srcFilename :: String,
-                srcLine :: Int,
-                srcColumn :: Int
+                srcLine     :: Int,
+                srcColumn   :: Int
                 }
 #ifdef __GLASGOW_HASKELL__
   deriving (Eq,Ord,Show,Typeable,Data)
@@ -189,12 +190,12 @@ data HsExportSpec
 
 -- | Import declaration.
 data HsImportDecl = HsImportDecl
-        { importLoc :: SrcLoc           -- ^ position of the @import@ keyword.
-        , importModule :: Module        -- ^ name of the module imported.
+        { importLoc       :: SrcLoc           -- ^ position of the @import@ keyword.
+        , importModule    :: Module        -- ^ name of the module imported.
         , importQualified :: Bool       -- ^ imported @qualified@?
-        , importAs :: Maybe Module      -- ^ optional alias name in an
+        , importAs        :: Maybe Module      -- ^ optional alias name in an
                                         -- @as@ clause.
-        , importSpecs :: Maybe (Bool,[HsImportSpec])
+        , importSpecs     :: Maybe (Bool,[HsImportSpec])
                         -- ^ optional list of import specifications.
                         -- The 'Bool' is 'True' if the names are excluded
                         -- by @hiding@.

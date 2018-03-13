@@ -1,4 +1,3 @@
--- #hide
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Language.Haskell.ParseUtils
@@ -30,9 +29,9 @@ module Language.Haskell.ParseUtils (
         , checkRevDecls         -- [HsDecl] -> P [HsDecl]
  ) where
 
-import Language.Haskell.Syntax
-import Language.Haskell.ParseMonad
-import Language.Haskell.Pretty
+import           Language.Haskell.ParseMonad
+import           Language.Haskell.Pretty
+import           Language.Haskell.Syntax
 
 splitTyConApp :: HsType -> P (HsName,[HsType])
 splitTyConApp t0 = split t0 []
@@ -84,7 +83,7 @@ checkInstHeader (HsQualType cs t) = do
 checkInsts :: HsType -> [HsType] -> P ((HsQName,[HsType]))
 checkInsts (HsTyApp l t) ts = checkInsts l (t:ts)
 checkInsts (HsTyCon c)   ts = return (c,ts)
-checkInsts _ _ = fail "Illegal instance declaration"
+checkInsts _ _              = fail "Illegal instance declaration"
 
 -----------------------------------------------------------------------------
 -- Checking Patterns.
@@ -108,7 +107,7 @@ checkPat e [] = case e of
                               r' <- checkPat r []
                               case op of
                                  HsQConOp c -> return (HsPInfixApp l' c r')
-                                 _ -> patFail
+                                 _          -> patFail
         HsTuple es         -> do
                               ps <- mapM (\e' -> checkPat e' []) es
                               return (HsPTuple ps)
@@ -227,8 +226,8 @@ checkGAlt (HsGuardedAlt loc e1 e2) = check2Exprs e1 e2 (HsGuardedAlt loc)
 
 checkStmt :: HsStmt -> P HsStmt
 checkStmt (HsGenerator loc p e) = check1Expr e (HsGenerator loc p)
-checkStmt (HsQualifier e) = check1Expr e HsQualifier
-checkStmt s@(HsLetStmt _) = return s
+checkStmt (HsQualifier e)       = check1Expr e HsQualifier
+checkStmt s@(HsLetStmt _)       = return s
 
 checkField :: HsFieldUpdate -> P HsFieldUpdate
 checkField (HsFieldUpdate n e) = check1Expr e (HsFieldUpdate n)
@@ -250,10 +249,10 @@ checkValDef srcloc lhs rhs whereBinds =
 
 isFunLhs :: HsExp -> [HsExp] -> Maybe (HsName, [HsExp])
 isFunLhs (HsInfixApp l (HsQVarOp (UnQual op)) r) es = Just (op, l:r:es)
-isFunLhs (HsApp (HsVar (UnQual f)) e) es = Just (f, e:es)
-isFunLhs (HsApp (HsParen f) e) es = isFunLhs f (e:es)
-isFunLhs (HsApp f e) es = isFunLhs f (e:es)
-isFunLhs _ _ = Nothing
+isFunLhs (HsApp (HsVar (UnQual f)) e) es            = Just (f, e:es)
+isFunLhs (HsApp (HsParen f) e) es                   = isFunLhs f (e:es)
+isFunLhs (HsApp f e) es                             = isFunLhs f (e:es)
+isFunLhs _ _                                        = Nothing
 
 -----------------------------------------------------------------------------
 -- In a class or instance body, a pattern binding must be of a variable.
@@ -274,8 +273,8 @@ checkMethodDef _ = return ()
 -- For occasions when doing this in the grammar would cause conflicts.
 
 checkUnQual :: HsQName -> P HsName
-checkUnQual (Qual _ _) = fail "Illegal qualified name"
-checkUnQual (UnQual n) = return n
+checkUnQual (Qual _ _)  = fail "Illegal qualified name"
+checkUnQual (UnQual n)  = return n
 checkUnQual (Special _) = fail "Illegal special name"
 
 -----------------------------------------------------------------------------

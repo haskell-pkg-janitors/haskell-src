@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -w #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Language.Haskell.Pretty
@@ -13,21 +12,31 @@
 --
 -----------------------------------------------------------------------------
 
-module Language.Haskell.Pretty (
-                -- * Pretty printing
-                Pretty,
-                prettyPrintStyleMode, prettyPrintWithMode, prettyPrint,
-                -- * Pretty-printing styles (from "Text.PrettyPrint.HughesPJ")
-                P.Style(..), P.style, P.Mode(..),
-                -- * Haskell formatting modes
-                PPHsMode(..), Indent, PPLayout(..), defaultMode) where
+module Language.Haskell.Pretty
+  ( -- * Pretty printing
+    Pretty,
+    prettyPrintStyleMode,
+    prettyPrintWithMode,
+    prettyPrint,
 
-import Language.Haskell.Syntax
+    -- * Pretty-printing styles (from "Text.PrettyPrint.HughesPJ")
+    P.Style(..),
+    P.style,
+    P.Mode(..),
 
-import Control.Applicative (Applicative(..))
-import Control.Monad (ap)
+    -- * Haskell formatting modes
+    PPHsMode(..),
+    Indent,
+    PPLayout(..),
+    defaultMode
+  ) where
 
-import qualified Text.PrettyPrint as P
+import           Language.Haskell.Syntax
+
+import           Control.Applicative     (Applicative (..))
+import           Control.Monad           (ap)
+
+import qualified Text.PrettyPrint        as P
 
 infixl 5 $$$
 
@@ -47,29 +56,29 @@ type Indent = Int
 -- /Note:/ the 'onsideIndent' must be positive and less than all other indents.
 data PPHsMode = PPHsMode {
                                 -- | indentation of a class or instance
-                classIndent :: Indent,
+                classIndent  :: Indent,
                                 -- | indentation of a @do@-expression
-                doIndent :: Indent,
+                doIndent     :: Indent,
                                 -- | indentation of the body of a
                                 -- @case@ expression
-                caseIndent :: Indent,
+                caseIndent   :: Indent,
                                 -- | indentation of the declarations in a
                                 -- @let@ expression
-                letIndent :: Indent,
+                letIndent    :: Indent,
                                 -- | indentation of the declarations in a
                                 -- @where@ clause
-                whereIndent :: Indent,
+                whereIndent  :: Indent,
                                 -- | indentation added for continuation
                                 -- lines that would otherwise be offside
                 onsideIndent :: Indent,
                                 -- | blank lines between statements?
-                spacing :: Bool,
+                spacing      :: Bool,
                                 -- | Pretty-printing style to use
-                layout :: PPLayout,
+                layout       :: PPLayout,
                                 -- | add GHC-style @LINE@ pragmas to output?
-                linePragmas :: Bool,
+                linePragmas  :: Bool,
                                 -- | not implemented yet
-                comments :: Bool
+                comments     :: Bool
                 }
 
 -- | The default mode: pretty-print using the offside rule and sensible
@@ -95,13 +104,14 @@ instance Functor (DocM s) where
          fmap f xs = do x <- xs; return (f x)
 
 instance Applicative (DocM s) where
-        pure = return
+        pure = retDocM
         (<*>) = ap
+        (*>) = then_DocM
 
 instance Monad (DocM s) where
         (>>=) = thenDocM
-        (>>) = then_DocM
-        return = retDocM
+        (>>) = (*>)
+        return = pure
 
 {-# INLINE thenDocM #-}
 {-# INLINE then_DocM #-}
@@ -153,9 +163,9 @@ nest i m = m >>= return . P.nest i
 
 -- Literals
 
-text, ptext :: String -> Doc
+text :: String -> Doc
 text = return . P.text
-ptext = return . P.text
+-- ptext = return . P.text
 
 char :: Char -> Doc
 char = return . P.char
@@ -172,80 +182,80 @@ float = return . P.float
 double :: Double -> Doc
 double = return . P.double
 
-rational :: Rational -> Doc
-rational = return . P.rational
+-- rational :: Rational -> Doc
+-- rational = return . P.rational
 
 -- Simple Combining Forms
 
-parens, brackets, braces,quotes,doubleQuotes :: Doc -> Doc
+parens, brackets, braces :: Doc -> Doc
 parens d = d >>= return . P.parens
 brackets d = d >>= return . P.brackets
 braces d = d >>= return . P.braces
-quotes d = d >>= return . P.quotes
-doubleQuotes d = d >>= return . P.doubleQuotes
+-- quotes d = d >>= return . P.quotes
+-- doubleQuotes d = d >>= return . P.doubleQuotes
 
 parensIf :: Bool -> Doc -> Doc
-parensIf True = parens
+parensIf True  = parens
 parensIf False = id
 
 -- Constants
 
-semi,comma,colon,space,equals :: Doc
+semi,comma,space,equals :: Doc
 semi = return P.semi
 comma = return P.comma
-colon = return P.colon
+-- colon = return P.colon
 space = return P.space
 equals = return P.equals
 
-lparen,rparen,lbrack,rbrack,lbrace,rbrace :: Doc
-lparen = return  P.lparen
-rparen = return  P.rparen
-lbrack = return  P.lbrack
-rbrack = return  P.rbrack
-lbrace = return  P.lbrace
-rbrace = return  P.rbrace
+-- lparen,rparen,lbrack,rbrack,lbrace,rbrace :: Doc
+-- lparen = return  P.lparen
+-- rparen = return  P.rparen
+-- lbrack = return  P.lbrack
+-- rbrack = return  P.rbrack
+-- lbrace = return  P.lbrace
+-- rbrace = return  P.rbrace
 
 -- Combinators
 
-(<>),(<+>),($$),($+$) :: Doc -> Doc -> Doc
-aM <> bM = do{a<-aM;b<-bM;return (a P.<> b)}
+(<<>>),(<+>),($$) :: Doc -> Doc -> Doc
+aM <<>> bM = do{a<-aM;b<-bM;return (a P.<> b)}
 aM <+> bM = do{a<-aM;b<-bM;return (a P.<+> b)}
 aM $$ bM = do{a<-aM;b<-bM;return (a P.$$ b)}
-aM $+$ bM = do{a<-aM;b<-bM;return (a P.$+$ b)}
+-- aM $+$ bM = do{a<-aM;b<-bM;return (a P.$+$ b)}
 
-hcat,hsep,vcat,sep,cat,fsep,fcat :: [Doc] -> Doc
+hcat,hsep,vcat,fsep :: [Doc] -> Doc
 hcat dl = sequence dl >>= return . P.hcat
 hsep dl = sequence dl >>= return . P.hsep
 vcat dl = sequence dl >>= return . P.vcat
-sep dl = sequence dl >>= return . P.sep
-cat dl = sequence dl >>= return . P.cat
+-- sep dl = sequence dl >>= return . P.sep
+-- cat dl = sequence dl >>= return . P.cat
 fsep dl = sequence dl >>= return . P.fsep
-fcat dl = sequence dl >>= return . P.fcat
+-- fcat dl = sequence dl >>= return . P.fcat
 
 -- Some More
 
-hang :: Doc -> Int -> Doc -> Doc
-hang dM i rM = do{d<-dM;r<-rM;return $ P.hang d i r}
+-- hang :: Doc -> Int -> Doc -> Doc
+-- hang dM i rM = do{d<-dM;r<-rM;return $ P.hang d i r}
 
 -- Yuk, had to cut-n-paste this one from Pretty.hs
 punctuate :: Doc -> [Doc] -> [Doc]
 punctuate _ []     = []
 punctuate p (d1:ds) = go d1 ds
                    where
-                     go d [] = [d]
-                     go d (e:es) = (d <> p) : go e es
+                     go d []     = [d]
+                     go d (e:es) = (d <<>> p) : go e es
 
 -- | render the document with a given style and mode.
 renderStyleMode :: P.Style -> PPHsMode -> Doc -> String
 renderStyleMode ppStyle ppMode d = P.renderStyle ppStyle . unDocM d $ ppMode
 
--- | render the document with a given mode.
-renderWithMode :: PPHsMode -> Doc -> String
-renderWithMode = renderStyleMode P.style
+-- --- | render the document with a given mode.
+-- renderWithMode :: PPHsMode -> Doc -> String
+-- renderWithMode = renderStyleMode P.style
 
--- | render the document with 'defaultMode'.
-render :: Doc -> String
-render = renderWithMode defaultMode
+-- -- | render the document with 'defaultMode'.
+-- render :: Doc -> String
+-- render = renderWithMode defaultMode
 
 -- | pretty-print with a given style and mode.
 prettyPrintStyleMode :: Pretty a => P.Style -> PPHsMode -> a -> String
@@ -259,15 +269,15 @@ prettyPrintWithMode = prettyPrintStyleMode P.style
 prettyPrint :: Pretty a => a -> String
 prettyPrint = prettyPrintWithMode defaultMode
 
-fullRenderWithMode :: PPHsMode -> P.Mode -> Int -> Float ->
-                      (P.TextDetails -> a -> a) -> a -> Doc -> a
-fullRenderWithMode ppMode m i f fn e mD =
-                   P.fullRender m i f fn e $ (unDocM mD) ppMode
-
-
-fullRender :: P.Mode -> Int -> Float -> (P.TextDetails -> a -> a)
-              -> a -> Doc -> a
-fullRender = fullRenderWithMode defaultMode
+-- fullRenderWithMode :: PPHsMode -> P.Mode -> Int -> Float ->
+--                       (P.TextDetails -> a -> a) -> a -> Doc -> a
+-- fullRenderWithMode ppMode m i f fn e mD =
+--                    P.fullRender m i f fn e $ (unDocM mD) ppMode
+--
+--
+-- fullRender :: P.Mode -> Int -> Float -> (P.TextDetails -> a -> a)
+--               -> a -> Doc -> a
+-- fullRender = fullRenderWithMode defaultMode
 
 -------------------------  Pretty-Print a Module --------------------
 instance Pretty HsModule where
@@ -290,9 +300,9 @@ instance Pretty Module where
 instance Pretty HsExportSpec where
         pretty (HsEVar name)                = pretty name
         pretty (HsEAbs name)                = pretty name
-        pretty (HsEThingAll name)           = pretty name <> text "(..)"
+        pretty (HsEThingAll name)           = pretty name <<>> text "(..)"
         pretty (HsEThingWith name nameList) =
-                pretty name <> (parenList . map pretty $ nameList)
+                pretty name <<>> (parenList . map pretty $ nameList)
         pretty (HsEModuleContents m)       = text "module" <+> pretty m
 
 instance Pretty HsImportDecl where
@@ -311,9 +321,9 @@ instance Pretty HsImportDecl where
 instance Pretty HsImportSpec where
         pretty (HsIVar name)                = pretty name
         pretty (HsIAbs name)                = pretty name
-        pretty (HsIThingAll name)           = pretty name <> text "(..)"
+        pretty (HsIThingAll name)           = pretty name <<>> text "(..)"
         pretty (HsIThingWith name nameList) =
-                pretty name <> (parenList . map pretty $ nameList)
+                pretty name <<>> (parenList . map pretty $ nameList)
 
 -------------------------  Declarations ------------------------------
 instance Pretty HsDecl where
@@ -412,8 +422,8 @@ instance Pretty HsAssoc where
         pretty HsAssocRight = text "infixr"
 
 instance Pretty HsSafety where
-        pretty HsSafe    = text "safe"
-        pretty HsUnsafe  = text "unsafe"
+        pretty HsSafe   = text "safe"
+        pretty HsUnsafe = text "unsafe"
 
 instance Pretty HsMatch where
         pretty (HsMatch pos f ps rhs whereDecls) =
@@ -430,12 +440,12 @@ instance Pretty HsMatch where
 
 ppWhere :: [HsDecl] -> Doc
 ppWhere [] = empty
-ppWhere l = nest 2 (text "where" $$$ ppBody whereIndent (map pretty l))
+ppWhere l  = nest 2 (text "where" $$$ ppBody whereIndent (map pretty l))
 
 ------------------------- Data & Newtype Bodies -------------------------
 instance Pretty HsConDecl where
         pretty (HsRecDecl _pos name fieldList) =
-                pretty name <> (braceList . map ppField $ fieldList)
+                pretty name <<>> (braceList . map ppField $ fieldList)
 
         pretty (HsConDecl _pos name@(HsSymbol _) [l, r]) =
                 myFsep [prettyPrec prec_btype l, ppHsName name,
@@ -449,7 +459,7 @@ ppField (names, ty) =
                        [text "::", pretty ty]
 
 instance Pretty HsBangType where
-        prettyPrec _ (HsBangedTy ty) = char '!' <> ppHsAType ty
+        prettyPrec _ (HsBangedTy ty)   = char '!' <<>> ppHsAType ty
         prettyPrec p (HsUnBangedTy ty) = prettyPrec p ty
 
 ppHsDeriving :: [HsQName] -> Doc
@@ -487,7 +497,7 @@ instance Pretty HsType where
 
 ------------------------- Expressions -------------------------
 instance Pretty HsRhs where
-        pretty (HsUnGuardedRhs e) = equals <+> pretty e
+        pretty (HsUnGuardedRhs e)        = equals <+> pretty e
         pretty (HsGuardedRhss guardList) = myVcat . map pretty $ guardList
 
 instance Pretty HsGuardedRhs where
@@ -500,11 +510,11 @@ instance Pretty HsLiteral where
         pretty (HsString s)     = text (show s)
         pretty (HsFrac r)       = double (fromRational r)
         -- GHC unboxed literals:
-        pretty (HsCharPrim c)   = text (show c)           <> char '#'
-        pretty (HsStringPrim s) = text (show s)           <> char '#'
-        pretty (HsIntPrim i)    = integer i               <> char '#'
-        pretty (HsFloatPrim r)  = float  (fromRational r) <> char '#'
-        pretty (HsDoublePrim r) = double (fromRational r) <> text "##"
+        pretty (HsCharPrim c)   = text (show c)           <<>> char '#'
+        pretty (HsStringPrim s) = text (show s)           <<>> char '#'
+        pretty (HsIntPrim i)    = integer i               <<>> char '#'
+        pretty (HsFloatPrim r)  = float  (fromRational r) <<>> char '#'
+        pretty (HsDoublePrim r) = double (fromRational r) <<>> text "##"
 
 instance Pretty HsExp where
         pretty (HsLit l) = pretty l
@@ -536,16 +546,16 @@ instance Pretty HsExp where
         pretty (HsLeftSection e op) = parens (pretty e <+> pretty op)
         pretty (HsRightSection op e) = parens (pretty op <+> pretty e)
         pretty (HsRecConstr c fieldList) =
-                pretty c <> (braceList . map pretty $ fieldList)
+                pretty c <<>> (braceList . map pretty $ fieldList)
         pretty (HsRecUpdate e fieldList) =
-                pretty e <> (braceList . map pretty $ fieldList)
+                pretty e <<>> (braceList . map pretty $ fieldList)
         -- patterns
         -- special case that would otherwise be buggy
         pretty (HsAsPat name (HsIrrPat e)) =
-                myFsep [pretty name <> char '@', char '~' <> pretty e]
+                myFsep [pretty name <<>> char '@', char '~' <<>> pretty e]
         pretty (HsAsPat name e) = hcat [pretty name, char '@', pretty e]
         pretty HsWildCard = char '_'
-        pretty (HsIrrPat e) = char '~' <> pretty e
+        pretty (HsIrrPat e) = char '~' <<>> pretty e
         -- Lists
         pretty (HsList list) =
                 bracketList . punctuate comma . map pretty $ list
@@ -554,9 +564,9 @@ instance Pretty HsExp where
         pretty (HsEnumFromTo from to) =
                 bracketList [pretty from, text "..", pretty to]
         pretty (HsEnumFromThen from thenE) =
-                bracketList [pretty from <> comma, pretty thenE, text ".."]
+                bracketList [pretty from <<>> comma, pretty thenE, text ".."]
         pretty (HsEnumFromThenTo from thenE to) =
-                bracketList [pretty from <> comma, pretty thenE,
+                bracketList [pretty from <<>> comma, pretty thenE,
                              text "..", pretty to]
         pretty (HsListComp e stmtList) =
                 bracketList ([pretty e, char '|']
@@ -579,14 +589,14 @@ instance Pretty HsPat where
                 bracketList . punctuate comma . map pretty $ ps
         prettyPrec _ (HsPParen p) = parens . pretty $ p
         prettyPrec _ (HsPRec c fields) =
-                pretty c <> (braceList . map pretty $ fields)
+                pretty c <<>> (braceList . map pretty $ fields)
         -- special case that would otherwise be buggy
         prettyPrec _ (HsPAsPat name (HsPIrrPat pat)) =
-                myFsep [pretty name <> char '@', char '~' <> pretty pat]
+                myFsep [pretty name <<>> char '@', char '~' <<>> pretty pat]
         prettyPrec _ (HsPAsPat name pat) =
                 hcat [pretty name, char '@', pretty pat]
         prettyPrec _ HsPWildCard = char '_'
-        prettyPrec _ (HsPIrrPat pat) = char '~' <> pretty pat
+        prettyPrec _ (HsPIrrPat pat) = char '~' <<>> pretty pat
 
 instance Pretty HsPatField where
         pretty (HsPFieldPat name pat) =
@@ -598,7 +608,7 @@ instance Pretty HsAlt where
                 myFsep [pretty e, pretty gAlts] $$$ ppWhere decls
 
 instance Pretty HsGuardedAlts where
-        pretty (HsUnGuardedAlt e) = text "->" <+> pretty e
+        pretty (HsUnGuardedAlt e)      = text "->" <+> pretty e
         pretty (HsGuardedAlts altList) = myVcat . map pretty $ altList
 
 instance Pretty HsGuardedAlt where
@@ -626,14 +636,14 @@ instance Pretty HsQOp where
 ppHsQNameInfix :: HsQName -> Doc
 ppHsQNameInfix name
         | isSymbolName (getName name) = ppHsQName name
-        | otherwise = char '`' <> ppHsQName name <> char '`'
+        | otherwise = char '`' <<>> ppHsQName name <<>> char '`'
 
 instance Pretty HsQName where
         pretty name = parensIf (isSymbolName (getName name)) (ppHsQName name)
 
 ppHsQName :: HsQName -> Doc
 ppHsQName (UnQual name) = ppHsName name
-ppHsQName (Qual m name) = pretty m <> char '.' <> ppHsName name
+ppHsQName (Qual m name) = pretty m <<>> char '.' <<>> ppHsName name
 ppHsQName (Special sym) = text (specialName sym)
 
 instance Pretty HsOp where
@@ -643,7 +653,7 @@ instance Pretty HsOp where
 ppHsNameInfix :: HsName -> Doc
 ppHsNameInfix name
         | isSymbolName name = ppHsName name
-        | otherwise = char '`' <> ppHsName name <> char '`'
+        | otherwise = char '`' <<>> ppHsName name <<>> char '`'
 
 instance Pretty HsName where
         pretty name = parensIf (isSymbolName name) (ppHsName name)
@@ -658,21 +668,21 @@ instance Pretty HsCName where
 
 isSymbolName :: HsName -> Bool
 isSymbolName (HsSymbol _) = True
-isSymbolName _ = False
+isSymbolName _            = False
 
 getName :: HsQName -> HsName
-getName (UnQual s) = s
-getName (Qual _ s) = s
-getName (Special HsCons) = HsSymbol ":"
+getName (UnQual s)         = s
+getName (Qual _ s)         = s
+getName (Special HsCons)   = HsSymbol ":"
 getName (Special HsFunCon) = HsSymbol "->"
-getName (Special s) = HsIdent (specialName s)
+getName (Special s)        = HsIdent (specialName s)
 
 specialName :: HsSpecialCon -> String
-specialName HsUnitCon = "()"
-specialName HsListCon = "[]"
-specialName HsFunCon = "->"
+specialName HsUnitCon      = "()"
+specialName HsListCon      = "[]"
+specialName HsFunCon       = "->"
 specialName (HsTupleCon n) = "(" ++ replicate (n-1) ',' ++ ")"
-specialName HsCons = ":"
+specialName HsCons         = ":"
 
 ppHsContext :: HsContext -> Doc
 ppHsContext []      = empty
@@ -685,7 +695,7 @@ ppHsAsst (a,ts) = myFsep (ppHsQName a : map ppHsAType ts)
 
 ------------------------- pp utils -------------------------
 maybePP :: (a -> Doc) -> Maybe a -> Doc
-maybePP _ Nothing = empty
+maybePP _ Nothing   = empty
 maybePP pp (Just a) = pp a
 
 parenList :: [Doc] -> Doc
@@ -700,11 +710,11 @@ bracketList = brackets . myFsepSimple
 -- Wrap in braces and semicolons, with an extra space at the start in
 -- case the first doc begins with "-", which would be scanned as {-
 flatBlock :: [Doc] -> Doc
-flatBlock = braces . (space <>) . hsep . punctuate semi
+flatBlock = braces . (space <<>>) . hsep . punctuate semi
 
 -- Same, but put each thing on a separate line
 prettyBlock :: [Doc] -> Doc
-prettyBlock = braces . (space <>) . vcat . punctuate semi
+prettyBlock = braces . (space <<>>) . vcat . punctuate semi
 
 -- Monadic PP Combinators -- these examine the env
 
@@ -716,9 +726,9 @@ topLevel header dl = do
          e <- fmap layout getPPEnv
          case e of
              PPOffsideRule -> header $$ vcat dl
-             PPSemiColon -> header $$ prettyBlock dl
-             PPInLine -> header $$ prettyBlock dl
-             PPNoLayout -> header <+> flatBlock dl
+             PPSemiColon   -> header $$ prettyBlock dl
+             PPInLine      -> header $$ prettyBlock dl
+             PPNoLayout    -> header <+> flatBlock dl
 
 ppBody :: (PPHsMode -> Int) -> [Doc] -> Doc
 ppBody f dl = do
