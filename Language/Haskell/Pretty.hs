@@ -103,6 +103,7 @@ newtype DocM s a = DocM (s -> a)
 instance Functor (DocM s) where
          fmap f xs = do x <- xs; return (f x)
 
+-- | @since 1.0.2.0
 instance Applicative (DocM s) where
         pure = retDocM
         (<*>) = ap

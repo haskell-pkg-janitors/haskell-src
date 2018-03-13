@@ -55,7 +55,7 @@ instance Monad ParseResult where
 -- TODO: relax constraint to 'Semigroup s => Semigroup (ParseResult
 -- s)' in the long distant future
 
--- | @since 1.0.2.0
+-- | @since 1.0.3.0
 instance Monoid m => Semi.Semigroup (ParseResult m) where
   ParseOk x <> ParseOk y = ParseOk $ x `mappend` y
   ParseOk _ <> err       = err
@@ -119,9 +119,11 @@ runParserWithMode mode (P m) s = case m s 0 1 start [] mode of
 runParser :: P a -> String -> ParseResult a
 runParser = runParserWithMode defaultParseMode
 
+-- | @since 1.0.2.0
 instance Functor P where
         fmap = liftM
 
+-- | @since 1.0.2.0
 instance Applicative P where
         pure a = P $ \_i _x _y _l s _m -> Ok s a
         (<*>) = ap
@@ -134,7 +136,7 @@ instance Monad P where
                     Ok s' a        -> runP (k a) i x y l s' mode
         fail = Fail.fail
 
--- | @since 1.0.2.0
+-- | @since 1.0.3.0
 instance Fail.MonadFail P where
         fail s = P $ \_r _col _line loc _stk _m -> Failed loc s
 
@@ -175,9 +177,11 @@ popContext = P $ \_i _x _y _l stk _m ->
 
 newtype Lex r a = Lex { runL :: (a -> P r) -> P r }
 
+-- | @since 1.0.2.0
 instance Functor (Lex r) where
         fmap = liftM
 
+-- | @since 1.0.2.0
 instance Applicative (Lex r) where
         pure a = Lex $ \k -> k a
         (<*>) = ap
@@ -189,7 +193,7 @@ instance Monad (Lex r) where
         (>>) = (*>)
         fail = Fail.fail
 
--- | @since 1.0.2.0
+-- | @since 1.0.3.0
 instance Fail.MonadFail (Lex r) where
         fail s = Lex $ \_ -> Fail.fail s
 

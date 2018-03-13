@@ -5,6 +5,8 @@
 
  - Drop support for GHC versions prior to GHC 7.0.
 
+ - Remove `-O2` from `ghc-options`.
+
 ## 1.0.2.0
 
  - Add support for GHC 7.10 & base-4.8)
