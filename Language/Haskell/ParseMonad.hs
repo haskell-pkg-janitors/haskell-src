@@ -12,7 +12,7 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE CPP -#}
+{-# LANGUAGE CPP #-}
 
 module Language.Haskell.ParseMonad(
                 -- * Parsing
