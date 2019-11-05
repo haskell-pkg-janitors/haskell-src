@@ -43,8 +43,10 @@ library
 
   if !impl(ghc >= 8.0)
     build-depends: semigroups == 0.18.*, fail == 4.9.*
-  else
+  if !impl(ghc >= 8.8)
     ghc-options: -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances
+  else -- ghc >= 88
+    ghc-options: -Wcompat -Wnoncanonical-monad-instances
 
   build-tools: happy == 1.19.*
 

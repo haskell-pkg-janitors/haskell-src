@@ -1,2 +1,4 @@
 # cabal's build directory
 dist
+# stack's build directory
+.stack-work/

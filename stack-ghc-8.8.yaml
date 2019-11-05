@@ -1,0 +1,4 @@
+resolver: nightly-2019-09-27
+flags: {}
+packages:
+- '.'
