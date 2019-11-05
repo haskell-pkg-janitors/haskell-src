@@ -1,3 +1,7 @@
+## 1.0.4.0
+
+ - Add support for GHC 8.8.
+
 ## 1.0.3.0
 
  - Add support for `MonadFail` & `Semigroup` proposals by
