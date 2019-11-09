@@ -12,6 +12,8 @@
 --
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE CPP #-}
+
 module Language.Haskell.ParseMonad(
                 -- * Parsing
                 P, ParseResult(..), atSrcLoc, LexContext(..),
@@ -134,7 +136,9 @@ instance Monad P where
                 case m i x y l s mode of
                     Failed loc msg -> Failed loc msg
                     Ok s' a        -> runP (k a) i x y l s' mode
+#if !(MIN_VERSION_base(4,13,0))
         fail = Fail.fail
+#endif
 
 -- | @since 1.0.3.0
 instance Fail.MonadFail P where
@@ -191,7 +195,9 @@ instance Monad (Lex r) where
         return = pure
         Lex v >>= f = Lex $ \k -> v (\a -> runL (f a) k)
         (>>) = (*>)
+#if !(MIN_VERSION_base(4,13,0))
         fail = Fail.fail
+#endif
 
 -- | @since 1.0.3.0
 instance Fail.MonadFail (Lex r) where
