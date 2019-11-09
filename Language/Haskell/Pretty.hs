@@ -33,7 +33,6 @@ module Language.Haskell.Pretty
 
 import           Language.Haskell.Syntax
 
-import           Control.Applicative     (Applicative (..))
 import           Control.Monad           (ap)
 
 import qualified Text.PrettyPrint        as P
@@ -112,7 +111,6 @@ instance Applicative (DocM s) where
 instance Monad (DocM s) where
         (>>=) = thenDocM
         (>>) = (*>)
-        return = pure
 
 {-# INLINE thenDocM #-}
 {-# INLINE then_DocM #-}

@@ -1,3 +1,7 @@
+### 1.0.3.1
+
+ - GHC 8.8.1/base-4.13 only compatibility release to support `MonadFail`
+
 ## 1.0.3.0
 
  - Add support for `MonadFail` & `Semigroup` proposals by
