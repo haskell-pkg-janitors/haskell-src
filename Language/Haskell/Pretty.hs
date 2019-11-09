@@ -33,7 +33,7 @@ module Language.Haskell.Pretty
 
 import           Language.Haskell.Syntax
 
-import           Control.Applicative     (Applicative (..))
+import           Control.Applicative as App (Applicative (..))
 import           Control.Monad           (ap)
 
 import qualified Text.PrettyPrint        as P
@@ -104,7 +104,7 @@ instance Functor (DocM s) where
          fmap f xs = do x <- xs; return (f x)
 
 -- | @since 1.0.2.0
-instance Applicative (DocM s) where
+instance App.Applicative (DocM s) where
         pure = retDocM
         (<*>) = ap
         (*>) = then_DocM
