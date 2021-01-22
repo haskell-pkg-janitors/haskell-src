@@ -1,3 +1,6 @@
-# cabal's build directory
-dist
+# cabal-generated files
+
+/.ghc.environment.*
+/cabal.project.local*
+/dist/
 /dist-newstyle/

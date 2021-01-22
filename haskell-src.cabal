@@ -58,7 +58,7 @@ library
   else
     ghc-options: -Wcompat -Wnoncanonical-monad-instances
 
-  build-tools: happy >= 1.19.0 && < 1.21.0
+  build-tools: happy >= 1.19 && < 1.21
 
   default-language: Haskell98
 
