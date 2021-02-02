@@ -10,6 +10,7 @@ author:         Simon Marlow, Sven Panne and Noel Winstanley
 -- Maintained through https://github.com/haskell-pkg-janitors. Join us!
 maintainer:     Herbert Valerio Riedel <hvr@gnu.org>
 bug-reports:    https://github.com/haskell-pkg-janitors/haskell-src/issues
+stability:      stable
 category:       Language
 synopsis:       Support for manipulating Haskell source code
 description:
