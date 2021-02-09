@@ -2,7 +2,7 @@ cabal-version:  2.4
 name:           haskell-src
 -- don't forget to update the changelog.md!
 version:        1.0.3.1
-x-revision: 2
+x-revision: 3
 
 license:        BSD-3-Clause
 license-file:   LICENSE
@@ -20,7 +20,8 @@ description:
     <http://www.haskell.org/onlinereport/ Haskell 98> code
 
 tested-with:
-    GHC == 8.10.3
+    GHC == 9.0.1
+    GHC == 8.10.4
     GHC == 8.8.4
 
 extra-source-files: changelog.md
@@ -38,7 +39,7 @@ library
         Language.Haskell.Syntax,
         Language.Haskell.ParseUtils
 
-  build-depends: base   ^>= 4.13.0.0 || ^>= 4.14.0.0
+  build-depends: base    >= 4.13 && < 4.16
                , syb    ^>= 0.7
                , pretty ^>= 1.1.3.6
                , array  ^>= 0.5.4.0
