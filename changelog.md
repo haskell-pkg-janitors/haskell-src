@@ -1,3 +1,7 @@
+## 1.0.3.1 Revision 3
+
+  - Support GHC 9.0 & base-4.15.
+
 ## 1.0.3.0/1 Revision 2
 
   - Support happy-1.20.
