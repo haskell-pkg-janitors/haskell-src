@@ -1,3 +1,7 @@
+## 1.0.3.1 Revision 4
+
+  - Support GHC 9.2 & base-4.16.
+
 ## 1.0.3.1 Revision 3
 
   - Support GHC 9.0 & base-4.15.
@@ -22,7 +26,7 @@
 
 ## 1.0.2.0
 
-  - Add support for GHC 7.10 & base-4.8
+  - Add support for GHC 7.10 & base-4.8.
 
   - Add missing `Functor` & `Applicative` instances for `P` and `Lex`
     monads needed for AMP compatibility.

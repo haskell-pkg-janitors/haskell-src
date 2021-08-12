@@ -7,3 +7,7 @@
 
 Facilities for manipulating Haskell 98 source code: an abstract syntax,
 lexer, parser and pretty-printer.
+
+- Version `1.0.3.0` for GHC versions `7.0` to `8.6`.
+
+- Version `1.0.3.1` for GHC versions from `8.8`.
