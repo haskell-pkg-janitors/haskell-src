@@ -1,0 +1,53 @@
+cabal-version:  2.4
+name:           haskell-src
+-- don't forget to update the changelog.md!
+version:        1.0.3.1
+x-revision: 4
+
+license:        BSD-3-Clause
+license-file:   LICENSE
+author:         Simon Marlow, Sven Panne and Noel Winstanley
+-- Maintained through https://github.com/haskell-pkg-janitors. Join us!
+maintainer:     Herbert Valerio Riedel <hvr@gnu.org>
+bug-reports:    https://github.com/haskell-pkg-janitors/haskell-src/issues
+category:       Language
+synopsis:       Support for manipulating Haskell source code
+description:
+    The @haskell-src@ package provides support for manipulating Haskell
+    source code. The package provides a lexer, parser and
+    pretty-printer, and a definition of a Haskell abstract syntax tree
+    (AST). Common uses of this package are to parse or generate
+    <http://www.haskell.org/onlinereport/ Haskell 98> code
+
+tested-with:
+    GHC == 9.0.1
+    GHC == 8.10.4
+    GHC == 8.8.4
+
+extra-source-files: changelog.md
+
+source-repository head
+    type:     git
+    location: https://github.com/haskell-pkg-janitors/haskell-src.git
+
+library
+  exposed-modules:
+        Language.Haskell.Lexer,
+        Language.Haskell.Parser,
+        Language.Haskell.ParseMonad,
+        Language.Haskell.Pretty,
+        Language.Haskell.Syntax,
+        Language.Haskell.ParseUtils
+
+  build-depends: base    >= 4.13 && < 4.17
+               , syb    ^>= 0.7
+               , pretty ^>= 1.1.3.6
+               , array  ^>= 0.5.4.0
+
+  ghc-options: -Wcompat -Wnoncanonical-monad-instances
+
+  build-tool-depends: happy:happy >= 1.19 && < 1.21
+
+  default-language: Haskell98
+
+  ghc-options: -Wall
