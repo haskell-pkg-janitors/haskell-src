@@ -7,8 +7,7 @@ build-type:     Simple
 license:        BSD3
 license-file:   LICENSE
 author:         Simon Marlow, Sven Panne and Noel Winstanley
--- Maintained through https://github.com/haskell-pkg-janitors. Join us!
-maintainer:     Herbert Valerio Riedel <hvr@gnu.org>
+maintainer:     Andreas Abel
 bug-reports:    https://github.com/haskell-pkg-janitors/haskell-src/issues
 stability:      stable
 category:       Language

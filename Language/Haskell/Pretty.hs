@@ -2,9 +2,9 @@
 -- |
 -- Module      :  Language.Haskell.Pretty
 -- Copyright   :  (c) The GHC Team, Noel Winstanley 1997-2000
--- License     :  BSD-style (see the file libraries/base/LICENSE)
+-- License     :  BSD-3-Clause
 --
--- Maintainer  :  libraries@haskell.org
+-- Maintainer  :  Andreas Abel
 -- Stability   :  stable
 -- Portability :  portable
 --
