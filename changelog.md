@@ -1,3 +1,9 @@
+## 1.0.4
+
+_Andreas Abel, 2022-02-07_
+
+  - Add `Eq` instance for `HsModule`.
+
 ## 1.0.3.2
 
 _Andreas Abel, 2022-02-07_

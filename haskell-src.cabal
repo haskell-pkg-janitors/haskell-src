@@ -1,7 +1,7 @@
 cabal-version:  >=1.10
 name:           haskell-src
 -- don't forget to update the changelog.md!
-version:        1.0.3.2
+version:        1.0.4
 build-type:     Simple
 
 license:        BSD3
