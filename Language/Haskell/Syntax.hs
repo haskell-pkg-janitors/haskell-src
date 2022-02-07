@@ -162,9 +162,9 @@ data HsCName
 data HsModule = HsModule SrcLoc Module (Maybe [HsExportSpec])
                          [HsImportDecl] [HsDecl]
 #ifdef __GLASGOW_HASKELL__
-  deriving (Show,Typeable,Data)
+  deriving (Eq,Show,Typeable,Data)
 #else
-  deriving (Show)
+  deriving (Eq,Show)
 #endif
 
 -- | Export specification.
