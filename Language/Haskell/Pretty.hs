@@ -43,10 +43,10 @@ infixl 5 $$$
 -----------------------------------------------------------------------------
 
 -- | Varieties of layout we can use.
-data PPLayout = PPOffsideRule   -- ^ classical layout
-              | PPSemiColon     -- ^ classical layout made explicit
-              | PPInLine        -- ^ inline decls, with newlines between them
-              | PPNoLayout      -- ^ everything on a single line
+data PPLayout = PPOffsideRule   -- ^ Classical layout.
+              | PPSemiColon     -- ^ Classical layout made explicit.
+              | PPInLine        -- ^ Inline decls, with newlines between them.
+              | PPNoLayout      -- ^ Everything on a single line.
               deriving Eq
 
 type Indent = Int
@@ -55,29 +55,29 @@ type Indent = Int
 --
 -- /Note:/ the 'onsideIndent' must be positive and less than all other indents.
 data PPHsMode = PPHsMode {
-                                -- | indentation of a class or instance
+                                -- | Indentation of a class or instance.
                 classIndent  :: Indent,
-                                -- | indentation of a @do@-expression
+                                -- | Indentation of a @do@-expression.
                 doIndent     :: Indent,
-                                -- | indentation of the body of a
-                                -- @case@ expression
+                                -- | Indentation of the body of a
+                                -- @case@ expression.
                 caseIndent   :: Indent,
-                                -- | indentation of the declarations in a
-                                -- @let@ expression
+                                -- | Indentation of the declarations in a
+                                -- @let@ expression.
                 letIndent    :: Indent,
-                                -- | indentation of the declarations in a
-                                -- @where@ clause
+                                -- | Indentation of the declarations in a
+                                -- @where@ clause.
                 whereIndent  :: Indent,
-                                -- | indentation added for continuation
-                                -- lines that would otherwise be offside
+                                -- | Indentation added for continuation
+                                -- lines that would otherwise be offside.
                 onsideIndent :: Indent,
-                                -- | blank lines between statements?
+                                -- | Blank lines between statements?
                 spacing      :: Bool,
-                                -- | Pretty-printing style to use
+                                -- | Pretty-printing style to use.
                 layout       :: PPLayout,
-                                -- | add GHC-style @LINE@ pragmas to output?
+                                -- | Add GHC-style @LINE@ pragmas to output?
                 linePragmas  :: Bool,
-                                -- | not implemented yet
+                                -- | (not implemented yet)
                 comments     :: Bool
                 }
 

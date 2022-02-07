@@ -17,7 +17,7 @@ description:
     source code. The package provides a lexer, parser and
     pretty-printer, and a definition of a Haskell abstract syntax tree
     (AST). Common uses of this package are to parse or generate
-    <http://www.haskell.org/onlinereport/ Haskell 98> code
+    <http://www.haskell.org/onlinereport/ Haskell 98> code.
 
 tested-with:
   GHC == 9.2.1
