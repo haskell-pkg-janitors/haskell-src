@@ -20,7 +20,7 @@ description:
     <http://www.haskell.org/onlinereport/ Haskell 98> code.
 
 tested-with:
-  GHC == 9.4.0.20220523
+  GHC == 9.4.1
   GHC == 9.2.2
   GHC == 9.0.2
   GHC == 8.10.7
