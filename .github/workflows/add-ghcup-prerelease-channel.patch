@@ -1,0 +1,11 @@
+--- haskell-ci.yml.orig	2022-05-25 17:23:38.000000000 +0200
++++ haskell-ci.yml	2022-05-25 17:30:43.000000000 +0200
+@@ -113,6 +113,8 @@
+             mkdir -p "$HOME/.ghcup/bin"
+             curl -sL https://downloads.haskell.org/ghcup/0.1.17.5/x86_64-linux-ghcup-0.1.17.5 > "$HOME/.ghcup/bin/ghcup"
+             chmod a+x "$HOME/.ghcup/bin/ghcup"
++            "$HOME/.ghcup/bin/ghcup" upgrade
++            "$HOME/.ghcup/bin/ghcup" config add-release-channel https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.7.yaml
+             "$HOME/.ghcup/bin/ghcup" install ghc "$HCVER"
+             "$HOME/.ghcup/bin/ghcup" install cabal 3.6.2.0
+           else

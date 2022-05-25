@@ -20,7 +20,8 @@ description:
     <http://www.haskell.org/onlinereport/ Haskell 98> code.
 
 tested-with:
-  GHC == 9.2.1
+  GHC == 9.4.0.20220523
+  GHC == 9.2.2
   GHC == 9.0.2
   GHC == 8.10.7
   GHC == 8.8.4
@@ -50,13 +51,16 @@ library
         Language.Haskell.Syntax,
         Language.Haskell.ParseUtils
 
-  build-depends: base    >= 4.3 && < 4.17
-               , syb     >= 0.1 && < 0.8
-               , pretty  >= 1.0.1.2 && < 1.2
-               , array   >= 0.3 && < 0.6
+  build-depends:   base       >= 4.3     && < 5
+                     -- no confirmed upper bound on base yet
+                 , syb        >= 0.1     && < 0.8
+                 , pretty     >= 1.0.1.2 && < 1.2
+                 , array      >= 0.3     && < 0.6
 
   if !impl(ghc >= 8.0)
-    build-depends: semigroups == 0.18.*, fail == 4.9.*
+    build-depends: fail       == 4.9.*
+                 , semigroups == 0.18.*
+                     -- semigroups >= 0.19 does not build with ghc < 8
   else
     ghc-options: -Wcompat -Wnoncanonical-monad-instances
 
