@@ -1,3 +1,9 @@
+## 1.0.4 Revision 1
+
+_Andreas Abel, 2022-05-25_
+
+  - Support GHC 9.4, allow base-4.17 and higher.
+
 ## 1.0.4
 
 _Andreas Abel, 2022-02-07_
