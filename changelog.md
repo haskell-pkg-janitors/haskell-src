@@ -1,3 +1,11 @@
+## 1.0.4.1
+
+_Andreas Abel, 2024-09-22_
+
+  - Replace use of `head` to pacify `-Wx-partial`.
+  - Remove upper bound on `happy`.
+  - Tested with GHC 8.0 - 9.10.1.
+
 ## 1.0.4 Revision 1
 
 _Andreas Abel, 2022-05-25_

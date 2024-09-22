@@ -171,8 +171,10 @@ isSymbol c = c `elem` ":!#%&*./?@\\-" || (Data.Char.isSymbol c && not (c `elem` 
 
 matchChar :: Char -> String -> Lex a ()
 matchChar c msg = do
-        s <- getInput
-        if null s || head s /= c then fail msg else discard 1
+  s <- getInput
+  case s of
+    c':_ | c == c' -> discard 1
+    _ -> fail msg
 
 -- The top-level lexer.
 -- We need to know whether we are at the beginning of the line to decide
