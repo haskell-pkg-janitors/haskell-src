@@ -1,4 +1,4 @@
-cabal-version:  >=1.10
+cabal-version:  1.18
 name:           haskell-src
 -- don't forget to update the changelog.md!
 version:        1.0.4.1
@@ -34,7 +34,7 @@ tested-with:
   GHC == 8.2.2
   GHC == 8.0.2
 
-extra-source-files: changelog.md
+extra-doc-files: changelog.md
 
 source-repository head
     type:     git
@@ -49,21 +49,17 @@ library
         Language.Haskell.Syntax,
         Language.Haskell.ParseUtils
 
-  build-depends:   base       >= 4.3     && < 5
+  build-depends:   base       >= 4.9     && < 5
                      -- no confirmed upper bound on base yet
                  , syb        >= 0.1     && < 0.8
                  , pretty     >= 1.0.1.2 && < 1.2
                  , array      >= 0.3     && < 0.6
 
-  if !impl(ghc >= 8.0)
-    build-depends: fail       == 4.9.*
-                 , semigroups == 0.18.*
-                     -- semigroups >= 0.19 does not build with ghc < 8
-  else
-    ghc-options: -Wcompat -Wnoncanonical-monad-instances
-
   build-tools: happy >= 1.19
 
   default-language: Haskell98
 
-  ghc-options: -Wall
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Wnoncanonical-monad-instances
