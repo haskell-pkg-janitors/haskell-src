@@ -14,8 +14,8 @@
 
 {-# LANGUAGE CPP #-}
 
-#if __GLASGOW_HASKELL__ >= 902
-{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
+#if __GLASGOW_HASKELL__ >= 900
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 #endif
 
 module Language.Haskell.ParseMonad(
