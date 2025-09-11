@@ -1,0 +1,21 @@
+# Format of a line:
+#
+# Proper Name <Proper@email> commit name <commit@email>
+# \-----------+------------/ \----------+-------------/
+#             |                         |
+#          replace                     find
+#
+# <Proper@email> is never optional and cannot appear by itself.
+# Besides that, the other parts are optional (as long as 2 parts
+# are present).
+
+# Please keep this file in alphabetic order!
+
+Don Stewart <dons@galois.com> <dons@cse.unsw.edu.au>
+Ian Lynagh <igloo@earth.li> igloo <none>
+Malcolm.Wallace <Malcolm.Wallace@cs.york.ac.uk> malcolm <none>
+Ross Paterson <ross@soi.city.ac.uk> ross <none>
+Simon Marlow <marlowsd@gmail.com> simonmar <none>
+Simon Peyton Jones <simon.peytonjones@gmail.com> simonpj <none>
+Sven Panne <sven.panne@aedion.de> panne <none>
+Sven Panne <sven.panne@aedion.de> sven.panne

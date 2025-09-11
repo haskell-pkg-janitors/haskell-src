@@ -1,6 +1,13 @@
+*~
+
 # cabal-generated files
 
 /.ghc.environment.*
 /cabal.project.local*
 /dist/
 /dist-newstyle/
+
+# Stack-generated files
+
+/.stack-work/
+stack*.yaml.lock
